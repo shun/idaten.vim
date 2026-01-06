@@ -1,5 +1,8 @@
 # AGENTS
 
+## 対応言語
+- 対応はすべて日本語で行う。
+
 ## プロジェクト概要
 - idaten.vim は Vim/Neovim 向けのプラグインマネージャで、TypeScript(Deno) 設定を単一の Vim script(state.vim) にコンパイルする。
 - 通常起動は state.vim の source のみで成立し、Deno を起動しない。
@@ -13,6 +16,7 @@
 - 実行時の glob/探索は禁止。compile で source 対象を列挙する。
 - Vim script は Vim9 を使わず、従来の Vim script で書く。
 - Vim script は最小限に留め、できる限り denops/TypeScript で処理する。
+- ドキュメント優先で実装し、ドキュメントに無いものは実装しない。
 
 ## 命名と配布
 - Repo: shun/idaten.vim

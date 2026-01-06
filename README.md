@@ -11,6 +11,7 @@ Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単�
 - 遅延読み込み v1 は event / FileType / command のみ対応します。
 - 取得元は git のみ（ローカルパスは dev override のみ許可）。
 - class 構文は全面禁止です。
+- Vim script は Vim9 を使わず、従来の Vim script で書きます。
 - Vim script は最小限に留め、重い処理は denops/TypeScript に寄せます。
 
 ## 対象環境

@@ -65,6 +65,14 @@ let s:state.plugins = {
       \     'plugin/ddc.vim',
       \     'autoload/ddc.vim',
       \   ],
+      \   'boot_sources': [
+      \     'ftdetect/ddc.vim',
+      \   ],
+      \   'ft_sources': {
+      \     'ftplugin': {},
+      \     'indent': {},
+      \     'syntax': {},
+      \   },
       \   'dev': {
       \     'enable': v:false,
       \     'override_path': '',
@@ -76,7 +84,9 @@ let s:state.plugins = {
 - `path` は管理ディレクトリ配下の clone 先の絶対パス。
 - `rtp` はプラグイン root からの相対パス（空文字は root）。
 - `depends` は依存する `name` の配列。
-- `sources` はプラグイン root からの相対パス配列（compile 時に列挙）。
+- `sources` はプラグインロード時に source する相対パス配列（compile 時に列挙）。
+- `boot_sources` は起動時に必ず source する相対パス配列（`ftdetect`）。
+- `ft_sources` は filetype ごとの列挙済みソース。
 - `hooks.add` と `hooks.source` は Vim script 文字列。
 - `dev.enable` が `true` の場合、runtime は `override_path` を優先する。
 

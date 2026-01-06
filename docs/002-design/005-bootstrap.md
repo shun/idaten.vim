@@ -32,6 +32,7 @@
 6. clone 失敗時は `g:idaten_disabled` を立て、原因と対処を案内して終了する。
 7. `state.vim` 不在時は自動 compile せず、`:Idaten sync`/`:Idaten compile` を案内して終了する。
 8. `state.vim` が存在する場合は `source` する。
+9. `:Idaten` コマンドを定義し、実行時に denops を起動して処理を委譲する。
 
 ## denops 検出
 

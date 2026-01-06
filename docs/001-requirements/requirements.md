@@ -91,6 +91,9 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 ### 5.7 Vim script 最小化
 - Vim script は最小限に留め、可能な限り denops/TypeScript に処理を委譲する。
 
+### 5.8 Vim9 禁止
+- Vim script は Vim9 を使わず、従来の Vim script で書く。
+
 ## 6. アーキテクチャ
 
 ### 6.1 Bootstrap(Vim script)
@@ -134,6 +137,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - High-level: ensure(repo 省略), lazy(A/B/C) を提供。
   - 型定義を提供(type/interface)。
 - bootstrap で設定パスを `g:idaten_config` で上書きできる。
+- 設定パスが空の場合は compile を行わず案内する。
 
 ### 7.4 モジュール解決
 - import from "idaten" を利用可能。
@@ -151,6 +155,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - hooks: hook_add, hook_source, hook_post_update
   - lazy: on_event, on_ft, on_cmd
   - dev: enable, overridePath
+- dev.enable が true の場合は overridePath が必須。
 
 ### 7.6 遅延読み込み(A/B/C)
 - event: autocmd による遅延ロード。
@@ -172,6 +177,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - hook_add / hook_source 情報
   - スキーマ/生成元メタデータ
 - スキーマ不一致や破損時は停止し sync を促す。
+- プラグイン実体が存在しない場合は compile を失敗させる。
 
 ### 7.9 Runtime アルゴリズム
 - 起動時に行うこと:
@@ -200,6 +206,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 
 ### 7.11 Dev override
 - dev.enable が true の場合:
+  - overridePath は必須とする
   - overridePath をロード対象にする
   - sync は override を操作しない
   - clean は override を削除しない
@@ -230,6 +237,11 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - `g:idaten_log_enabled` で有効/無効を制御する。
 - 出力先は `g:idaten_log_path` で指定する。
 - 既定の出力先は `/tmp/idaten` とする。
+
+### 7.15 コマンド補完
+- `:Idaten` はサブコマンド補完を提供する。
+- 補完対象は `compile/sync/status/check/clean/lock` とする。
+- `:Idaten sync` では `--locked` を補完対象に含める。
 
 ## 8. データ仕様
 

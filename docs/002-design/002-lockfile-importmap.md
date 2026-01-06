@@ -38,6 +38,11 @@
 
 - `import { ... } from "idaten"` を解決する。
 
+### 生成タイミング
+
+- `:Idaten compile` で生成/更新する。
+- `:Idaten sync` は compile を内包するため、同様に更新される。
+
 ### 配置
 
 `{idaten_dir}/import_map.json`
@@ -55,6 +60,6 @@
 ### 値
 
 - リリース時: `"jsr:@shun/idaten-vim@<version>"`
-- 開発時: ローカルパス
+- 開発時: `IDATEN_DEV=1` の場合はローカルパス
 
 ※ 競合回避用の別キー（例: `idaten_vim`）は v1 では扱わない。

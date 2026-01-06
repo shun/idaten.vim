@@ -10,11 +10,13 @@
 - Deno を起動するのは `:Idaten` 実行時のみ。
 - `state.vim` は失敗時に更新しない。
 - dev override は `sync/clean/lock` の対象外。
+- `:Idaten` はサブコマンド補完を提供する（`compile/sync/status/check/clean/lock`）。
 
 ## :Idaten compile
 
 - TypeScript 設定を評価し `state.vim` を生成する。
 - 設定ファイルのパスは bootstrap 側で決定されたものを使用する。
+- 設定パスが空の場合は compile を行わず案内する。
 - 失敗時は `state.vim` を更新せず、原因を表示する。
 - 必要に応じて `import_map.json` を生成/更新する。
 
@@ -33,6 +35,7 @@
 
 - lockfile を強制する（lockfile が無い場合はエラー）。
 - lockfile に存在しない `name` はエラーとする。
+- `:Idaten sync` の補完で `--locked` を提示する。
 
 ## :Idaten status
 

@@ -19,6 +19,8 @@
 
 ### 起動時
 
+- `s:state.plugins` を参照し、`boot_sources` を source する。
+- lazy が未指定（event/ft/cmd がすべて空）のプラグインは起動時にロードする。
 - `s:state.plugins` を参照し、`hook_add` を依存解決順に実行する。
 - `s:state.triggers.event` と `s:state.triggers.ft` に対して autocmd を定義する。
 - `s:state.triggers.cmd` に対して stub command を定義する。
@@ -32,6 +34,7 @@
    - `runtimepath` を直接更新する。
    - `sources` を `source` する。
    - `hook_source` を実行する。
+3. FileType の場合は該当 `ft_sources` を source する。
 3. command の場合は本来のコマンドを再実行する。
 
 ## 命名と状態
