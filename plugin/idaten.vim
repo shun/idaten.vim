@@ -1,58 +1,54 @@
-vim9script
-
-import autoload 'idaten.vim' as Idaten
-
 if exists('g:loaded_idaten')
   finish
 endif
-g:loaded_idaten = 1
+let g:loaded_idaten = 1
 
 if get(g:, 'idaten_disabled', v:false)
-  Idaten.Log('bootstrap: disabled')
+  call idaten#Log('bootstrap: disabled')
   finish
 endif
 
 if !exists('g:idaten_denops_repo') || empty(g:idaten_denops_repo)
-  g:idaten_denops_repo = 'vim-denops/denops.vim'
+  let g:idaten_denops_repo = 'vim-denops/denops.vim'
 endif
 
-def IdatenBootstrap()
-  Idaten.Log('bootstrap: start')
-  var dir = Idaten.ResolveDir()
-  var config_path = Idaten.ResolveConfig()
-  var state_path = dir .. '/state.vim'
-  Idaten.Log('bootstrap: idaten_dir=' .. dir)
-  if !empty(config_path)
-    Idaten.Log('bootstrap: config=' .. config_path)
+function! s:IdatenBootstrap() abort
+  call idaten#Log('bootstrap: start')
+  let l:dir = idaten#ResolveDir()
+  let l:config_path = idaten#ResolveConfig()
+  let l:state_path = l:dir .. '/state.vim'
+  call idaten#Log('bootstrap: idaten_dir=' .. l:dir)
+  if !empty(l:config_path)
+    call idaten#Log('bootstrap: config=' .. l:config_path)
   endif
 
-  if !Idaten.EnsureDenops(dir)
-    Idaten.Log('bootstrap: denops missing')
+  if !idaten#EnsureDenops(l:dir)
+    call idaten#Log('bootstrap: denops missing')
     if !get(g:, 'idaten_denops_clone_tried', v:false)
-      g:idaten_denops_clone_tried = v:true
-      var err = Idaten.CloneDenops(dir)
-      if err != ''
-        Idaten.Log('bootstrap: denops clone failed: ' .. err)
-        g:idaten_disabled = v:true
-        Idaten.NotifyDenopsFailure(err)
+      let g:idaten_denops_clone_tried = v:true
+      let l:err = idaten#CloneDenops(l:dir)
+      if !empty(l:err)
+        call idaten#Log('bootstrap: denops clone failed: ' .. l:err)
+        let g:idaten_disabled = v:true
+        call idaten#NotifyDenopsFailure(l:err)
         return
       endif
-      Idaten.Log('bootstrap: denops clone ok')
+      call idaten#Log('bootstrap: denops clone ok')
     else
       return
     endif
   else
-    Idaten.Log('bootstrap: denops ok')
+    call idaten#Log('bootstrap: denops ok')
   endif
 
-  if !filereadable(state_path)
-    Idaten.Log('bootstrap: state missing: ' .. state_path)
-    Idaten.NotifyStateMissing(state_path)
+  if !filereadable(l:state_path)
+    call idaten#Log('bootstrap: state missing: ' .. l:state_path)
+    call idaten#NotifyStateMissing(l:state_path)
     return
   endif
 
-  Idaten.Log('bootstrap: source state')
-  execute 'source' fnameescape(state_path)
-enddef
+  call idaten#Log('bootstrap: source state')
+  execute 'source' fnameescape(l:state_path)
+endfunction
 
-IdatenBootstrap()
+call s:IdatenBootstrap()

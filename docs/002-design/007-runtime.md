@@ -1,10 +1,11 @@
-# 設計: Runtime（Vim9 Script）
+# 設計: Runtime（Vim script）
 
 ## 目的
 
 - 起動時は `state.vim` の `source` のみで成立させる。
 - 遅延トリガで必要なプラグインのみロードする。
 - runtime で探索せず、`state.vim` に列挙された情報のみを使う。
+- Vim script は最小限に留め、重い処理は denops/TypeScript に委譲する。
 
 ## 入力
 
@@ -18,14 +19,14 @@
 
 ### 起動時
 
-- `state.plugins` を参照し、`hook_add` を依存解決順に実行する。
-- `state.triggers.event` と `state.triggers.ft` に対して autocmd を定義する。
-- `state.triggers.cmd` に対して stub command を定義する。
+- `s:state.plugins` を参照し、`hook_add` を依存解決順に実行する。
+- `s:state.triggers.event` と `s:state.triggers.ft` に対して autocmd を定義する。
+- `s:state.triggers.cmd` に対して stub command を定義する。
 
 ### トリガ発火時
 
 1. `loaded[name]` を確認。
-2. 未ロードなら以下を実行:
+2. 未ロードなら denops にロードを委譲する。
    - `dev.enable` が `true` の場合は `override_path` を使用する。
    - 依存を先にロードする。
    - `runtimepath` を直接更新する。
@@ -36,7 +37,7 @@
 ## 命名と状態
 
 - `loaded` は `name` をキーにした辞書で管理する。
-- `state` は `state.vim` から読み込まれる script-local 変数。
+- `s:state` は `state.vim` から読み込まれる script-local 変数。
 
 ## stub command の再実行
 
@@ -54,4 +55,4 @@
 ## エラー処理
 
 - 依存解決が失敗した場合は対象プラグインをロードせずに停止する。
-- `state.schema` が未知の場合は runtime を停止し、`sync/compile` を案内する。
+- `s:state.schema` が未知の場合は runtime を停止し、`sync/compile` を案内する。

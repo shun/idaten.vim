@@ -1,17 +1,18 @@
 # AGENTS
 
 ## プロジェクト概要
-- idaten.vim は Vim/Neovim 向けのプラグインマネージャで、TypeScript(Deno) 設定を単一の Vim9 Script(state.vim) にコンパイルする。
+- idaten.vim は Vim/Neovim 向けのプラグインマネージャで、TypeScript(Deno) 設定を単一の Vim script(state.vim) にコンパイルする。
 - 通常起動は state.vim の source のみで成立し、Deno を起動しない。
 
 ## 絶対要件
 - class 構文は禁止（ユーザ設定/コア/拡張すべて）。関数と plain object のみ。
-- 設定は TypeScript のみ。Vim9 Script DSL は最小 bootstrap 以外提供しない。
+- 設定は TypeScript のみ。Vim script DSL は最小 bootstrap 以外提供しない。
 - 取得元は git のみ。ローカルパスは dev override のみ許可。
 - 遅延読み込み v1 は event/FileType/command のみ。
 - :Idaten sync は compile を必ず内包。
 - 実行時の glob/探索は禁止。compile で source 対象を列挙する。
-- Vim Script を書く場合は必ず Vim9 Script の書式を使う。
+- Vim script は Vim9 を使わず、従来の Vim script で書く。
+- Vim script は最小限に留め、できる限り denops/TypeScript で処理する。
 
 ## 命名と配布
 - Repo: shun/idaten.vim

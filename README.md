@@ -1,16 +1,17 @@
 # idaten.vim
 
-Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単一の Vim9 Script(`state.vim`) にコンパイルし、通常起動ではそれを `source` するだけで動作するプラグインマネージャです。
+Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単一の Vim script(`state.vim`) にコンパイルし、通常起動ではそれを `source` するだけで動作するプラグインマネージャです。
 
 ## 主要コンセプト
 
 - 設定は TypeScript のみで記述します。
 - コンパイル成果物は単一の `state.vim` です。
-- 通常起動では Deno を起動しません（`sync/compile` 時のみ使用）。
+- 通常起動では Deno を起動しません（`sync/compile` と必要な遅延処理時のみ使用）。
 - 実行時の探索は行わず、`compile` で列挙したファイルのみを `source` します。
 - 遅延読み込み v1 は event / FileType / command のみ対応します。
 - 取得元は git のみ（ローカルパスは dev override のみ許可）。
 - class 構文は全面禁止です。
+- Vim script は最小限に留め、重い処理は denops/TypeScript に寄せます。
 
 ## 対象環境
 

@@ -1,4 +1,4 @@
-# 設計: bootstrap（Vim9 Script）
+# 設計: bootstrap（Vim script）
 
 ## 目的
 
@@ -45,47 +45,38 @@
 - 失敗時は `v:shell_error` を確認し、原因と対処を明示する。
 - `owner/repo` 形式の場合は `https://github.com/<owner>/<repo>.git` に変換して clone する。
 
-## Vim9 Script 例（概要）
+## Vim script 例（概要）
 
 ```vim
-vim9script
-
 if exists('g:loaded_idaten')
   finish
 endif
-g:loaded_idaten = 1
+let g:loaded_idaten = 1
 
 if get(g:, 'idaten_disabled', v:false)
   finish
 endif
 
-def IdatenResolveDir(): string
-  if exists('g:idaten_dir') && !empty(g:idaten_dir)
-    return g:idaten_dir
-  endif
-  " OS 既定パスの解決は別関数で行う。
-  return IdatenDefaultDir()
-enddef
-
-def IdatenBootstrap()
-  var dir = IdatenResolveDir()
-  var state_path = dir .. '/state.vim'
-  if !IdatenHasDenops(dir)
+function! s:IdatenBootstrap() abort
+  let l:dir = idaten#ResolveDir()
+  let l:state_path = l:dir . '/state.vim'
+  if !idaten#EnsureDenops(l:dir)
     if !get(g:, 'idaten_denops_clone_tried', v:false)
-      g:idaten_denops_clone_tried = v:true
-      if !IdatenCloneDenops(dir)
-        g:idaten_disabled = v:true
-        IdatenNotifyDenopsFailure()
+      let g:idaten_denops_clone_tried = v:true
+      let l:err = idaten#CloneDenops(l:dir)
+      if !empty(l:err)
+        let g:idaten_disabled = v:true
+        call idaten#NotifyDenopsFailure(l:err)
         return
       endif
     endif
   endif
-  if !filereadable(state_path)
-    IdatenNotifyStateMissing()
+  if !filereadable(l:state_path)
+    call idaten#NotifyStateMissing(l:state_path)
     return
   endif
-  execute 'source' fnameescape(state_path)
-enddef
+  execute 'source' fnameescape(l:state_path)
+endfunction
 
-IdatenBootstrap()
+call s:IdatenBootstrap()
 ```

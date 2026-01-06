@@ -1,6 +1,4 @@
-vim9script
-
-def DefaultDir(): string
+function! s:DefaultDir() abort
   if has('win32') || has('win64')
     return $LOCALAPPDATA .. '/idaten'
   endif
@@ -13,191 +11,187 @@ def DefaultDir(): string
     return expand('~/.cache/idaten')
   endif
   return $XDG_CACHE_HOME .. '/idaten'
-enddef
+endfunction
 
-export def ResolveDir(): string
+function! idaten#ResolveDir() abort
   if exists('g:idaten_dir') && !empty(g:idaten_dir)
     return g:idaten_dir
   endif
-  return DefaultDir()
-enddef
+  return s:DefaultDir()
+endfunction
 
-export def ResolveConfig(): string
+function! idaten#ResolveConfig() abort
   if exists('g:idaten_config') && !empty(g:idaten_config)
     return g:idaten_config
   endif
   return ''
-enddef
+endfunction
 
-def LogEnabled(): bool
+function! s:LogEnabled() abort
   return get(g:, 'idaten_log_enabled', v:false)
-enddef
+endfunction
 
-def LogPath(): string
+function! s:LogPath() abort
   if exists('g:idaten_log_path') && !empty(g:idaten_log_path)
     return g:idaten_log_path
   endif
   return '/tmp/idaten'
-enddef
+endfunction
 
-def LogFilePath(): string
-  var path = LogPath()
-  if empty(path)
+function! s:LogFilePath() abort
+  let l:path = s:LogPath()
+  if empty(l:path)
     return ''
   endif
-  if isdirectory(path)
-    return path .. '/idaten.log'
+  if isdirectory(l:path)
+    return l:path .. '/idaten.log'
   endif
-  return path
-enddef
+  return l:path
+endfunction
 
-export def Log(message: string)
-  if !LogEnabled()
+function! idaten#Log(message) abort
+  if !s:LogEnabled()
     return
   endif
-  var path = LogFilePath()
-  if empty(path)
+  let l:path = s:LogFilePath()
+  if empty(l:path)
     return
   endif
-  var dir = fnamemodify(path, ':h')
-  if !empty(dir) && !isdirectory(dir)
-    mkdir(dir, 'p')
+  let l:dir = fnamemodify(l:path, ':h')
+  if !empty(l:dir) && !isdirectory(l:dir)
+    call mkdir(l:dir, 'p')
   endif
-  var line = strftime('%Y-%m-%dT%H:%M:%S%z') .. ' ' .. message
+  let l:line = strftime('%Y-%m-%dT%H:%M:%S%z') .. ' ' .. a:message
   try
-    writefile([line], path, 'a')
+    call writefile([l:line], l:path, 'a')
   catch
   endtry
-enddef
+endfunction
 
-def StripGitSuffix(path: string): string
-  return substitute(path, '\.git$', '', '')
-enddef
+function! s:StripGitSuffix(path) abort
+  return substitute(a:path, '\.git$', '', '')
+endfunction
 
-def StripSlashes(path: string): string
-  var stripped = substitute(path, '^/*', '', '')
-  stripped = substitute(stripped, '/*$', '', '')
-  return stripped
-enddef
+function! s:StripSlashes(path) abort
+  let l:stripped = substitute(a:path, '^/*', '', '')
+  let l:stripped = substitute(l:stripped, '/*$', '', '')
+  return l:stripped
+endfunction
 
-def SanitizeSegment(segment: string): string
-  var safe = tolower(segment)
-  safe = substitute(safe, '[^a-z0-9._-]', '_', 'g')
-  if empty(safe)
+function! s:SanitizeSegment(segment) abort
+  let l:safe = tolower(a:segment)
+  let l:safe = substitute(l:safe, '[^a-z0-9._-]', '_', 'g')
+  if empty(l:safe)
     return '_'
   endif
-  return safe
-enddef
+  return l:safe
+endfunction
 
-def RepoSegments(spec: string): list<string>
-  var host = ''
-  var path = ''
-  if spec =~# '^[a-z][a-z0-9+.-]*://'
-    var rest = substitute(spec, '^[a-z][a-z0-9+.-]*://', '', '')
-    var parts = split(rest, '/', 1)
-    host = parts[0]
-    if len(parts) > 1
-      path = join(parts[1 :], '/')
+function! s:RepoSegments(spec) abort
+  let l:host = ''
+  let l:path = ''
+  if a:spec =~# '^[a-z][a-z0-9+.-]*://'
+    let l:rest = substitute(a:spec, '^[a-z][a-z0-9+.-]*://', '', '')
+    let l:parts = split(l:rest, '/', 1)
+    let l:host = l:parts[0]
+    if len(l:parts) > 1
+      let l:path = join(l:parts[1 : ], '/')
     endif
   else
-    path = spec
+    let l:path = a:spec
   endif
-  path = StripGitSuffix(path)
-  path = StripSlashes(path)
+  let l:path = s:StripGitSuffix(l:path)
+  let l:path = s:StripSlashes(l:path)
 
-  var segments: list<string> = []
-  if !empty(path)
-    segments = split(path, '/', 1)
+  let l:segments = []
+  if !empty(l:path)
+    let l:segments = split(l:path, '/', 1)
   endif
-  if !empty(host) && host !=# 'github.com' && host !=# 'www.github.com'
-    segments = [host] + segments
+  if !empty(l:host) && l:host !=# 'github.com' && l:host !=# 'www.github.com'
+    call insert(l:segments, l:host, 0)
   endif
-  if empty(segments)
-    segments = ['_']
+  if empty(l:segments)
+    let l:segments = ['_']
   endif
-  var sanitized: list<string> = []
-  for seg in segments
-    sanitized += [SanitizeSegment(seg)]
-  endfor
-  return sanitized
-enddef
+  return map(l:segments, 's:SanitizeSegment(v:val)')
+endfunction
 
-export def RepoDir(base: string, spec: string): string
-  var segments = RepoSegments(spec)
-  return base .. '/repos/' .. join(segments, '/')
-enddef
+function! idaten#RepoDir(base, spec) abort
+  let l:segments = s:RepoSegments(a:spec)
+  return a:base .. '/repos/' .. join(l:segments, '/')
+endfunction
 
-export def EnsureRuntimePath(path: string)
-  if empty(path)
+function! idaten#EnsureRuntimePath(path) abort
+  if empty(a:path)
     return
   endif
-  if index(split(&runtimepath, ','), path) != -1
+  if index(split(&runtimepath, ','), a:path) != -1
     return
   endif
-  execute 'set runtimepath^=' .. fnameescape(path)
-enddef
+  execute 'set runtimepath^=' .. fnameescape(a:path)
+endfunction
 
-export def EnsureDenops(idaten_dir: string): bool
-  for entry in split(&runtimepath, ',')
-    if filereadable(entry .. '/plugin/denops.vim')
-      return true
+function! idaten#EnsureDenops(idaten_dir) abort
+  for l:entry in split(&runtimepath, ',')
+    if filereadable(l:entry .. '/plugin/denops.vim')
+      return v:true
     endif
   endfor
 
-  var denops_repo = get(g:, 'idaten_denops_repo', 'vim-denops/denops.vim')
-  var denops_path = RepoDir(idaten_dir, denops_repo)
-  if filereadable(denops_path .. '/plugin/denops.vim')
-    EnsureRuntimePath(denops_path)
-    return true
+  let l:denops_repo = get(g:, 'idaten_denops_repo', 'vim-denops/denops.vim')
+  let l:denops_path = idaten#RepoDir(a:idaten_dir, l:denops_repo)
+  if filereadable(l:denops_path .. '/plugin/denops.vim')
+    call idaten#EnsureRuntimePath(l:denops_path)
+    return v:true
   endif
 
-  return false
-enddef
+  return v:false
+endfunction
 
-export def CloneDenops(idaten_dir: string): string
+function! idaten#CloneDenops(idaten_dir) abort
   if !executable('git')
     return 'git is not available. Please install git.'
   endif
 
-  var denops_repo = get(g:, 'idaten_denops_repo', '')
-  if empty(denops_repo)
+  let l:denops_repo = get(g:, 'idaten_denops_repo', '')
+  if empty(l:denops_repo)
     return 'g:idaten_denops_repo is empty. Set a clone source.'
   endif
-  if denops_repo !~# '^[a-z][a-z0-9+.-]*://' && denops_repo =~# '^[^/][^ ]*/[^/][^ ]*$'
-    denops_repo = 'https://github.com/' .. denops_repo .. '.git'
+  if l:denops_repo !~# '^[a-z][a-z0-9+.-]*://' && l:denops_repo =~# '^[^/][^ ]*/[^/][^ ]*$'
+    let l:denops_repo = 'https://github.com/' .. l:denops_repo .. '.git'
   endif
 
-  var repos_dir = idaten_dir .. '/repos'
-  if !isdirectory(repos_dir)
-    mkdir(repos_dir, 'p')
+  let l:repos_dir = a:idaten_dir .. '/repos'
+  if !isdirectory(l:repos_dir)
+    call mkdir(l:repos_dir, 'p')
   endif
 
-  var denops_path = RepoDir(idaten_dir, denops_repo)
-  if isdirectory(denops_path)
-    return 'denops clone destination already exists: ' .. denops_path
+  let l:denops_path = idaten#RepoDir(a:idaten_dir, l:denops_repo)
+  if isdirectory(l:denops_path)
+    return 'denops clone destination already exists: ' .. l:denops_path
   endif
 
-  var cmd = 'git clone --depth 1 ' .. shellescape(denops_repo) .. ' ' .. shellescape(denops_path)
-  var result = system(cmd)
+  let l:cmd = 'git clone --depth 1 ' .. shellescape(l:denops_repo) .. ' ' .. shellescape(l:denops_path)
+  let l:result = system(l:cmd)
   if v:shell_error != 0
-    return 'git clone failed: ' .. result
+    return 'git clone failed: ' .. l:result
   endif
 
-  EnsureRuntimePath(denops_path)
+  call idaten#EnsureRuntimePath(l:denops_path)
   return ''
-enddef
+endfunction
 
-export def NotifyDenopsFailure(reason: string)
+function! idaten#NotifyDenopsFailure(reason) abort
   echohl ErrorMsg
   echomsg 'idaten: denops clone failed. idaten is disabled for this session.'
-  echomsg 'idaten: ' .. reason
+  echomsg 'idaten: ' .. a:reason
   echomsg 'idaten: check git, network, or g:idaten_denops_repo.'
   echohl None
-enddef
+endfunction
 
-export def NotifyStateMissing(state_path: string)
+function! idaten#NotifyStateMissing(state_path) abort
   echohl WarningMsg
-  echomsg 'idaten: state.vim not found: ' .. state_path
+  echomsg 'idaten: state.vim not found: ' .. a:state_path
   echomsg 'idaten: run :Idaten sync or :Idaten compile.'
   echohl None
-enddef
+endfunction

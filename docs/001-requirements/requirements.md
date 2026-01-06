@@ -3,12 +3,12 @@
 ## 1. 概要
 
 ### 1.1 目的
-idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単一の Vim9 Script(state.vim) にコンパイルし、通常起動ではそれを source するだけで動作するプラグインマネージャである。
+idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単一の Vim script(state.vim) にコンパイルし、通常起動ではそれを source するだけで動作するプラグインマネージャである。
 
 ### 1.2 主要コンセプト
 - 設定は TypeScript のみで記述する。
-- コンパイル成果物は単一の Vim9 Script ファイル(state.vim)。
-- 通常起動では Deno を起動しない。Deno を使うのは sync/compile 時のみ。
+- コンパイル成果物は単一の Vim script ファイル(state.vim)。
+- 通常起動では Deno を起動しない。Deno を使うのは sync/compile と必要な遅延処理時のみ。
 - 実行時のディスク I/O を最小化する(実行時の探索はしない)。
 - 遅延読み込み v1 は event/FileType/command のみ。
 - プラグイン取得元は git リポジトリのみ。dev override でローカル作業ツリーを読める。
@@ -62,7 +62,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 ### 4.2 アウトスコープ(v1)
 - zip/tar などのアーカイブ取得
 - git 以外のプロトコル抽象化
-- キー押下/関数呼び出し/Lua require の遅延ロード
+- キー押下/関数呼び出しの遅延ロード
 - リモート差分の常時監視
 - 汎用外部ビルドシステム(npm/pip 等)
 
@@ -74,7 +74,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 
 ### 5.2 TypeScript のみ
 - 設定は TypeScript API で記述する。
-- Vim9 Script DSL は提供しない(bootstrap 最小設定を除く)。
+- Vim script DSL は提供しない(bootstrap 最小設定を除く)。
 
 ### 5.3 実行時探索の禁止
 - runtime では glob/走査を行わず、compile で列挙する。
@@ -88,9 +88,12 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 ### 5.6 sync は compile 内包
 - :Idaten sync は必ず compile を実行する。
 
+### 5.7 Vim script 最小化
+- Vim script は最小限に留め、可能な限り denops/TypeScript に処理を委譲する。
+
 ## 6. アーキテクチャ
 
-### 6.1 Bootstrap(Vim9 Script/Lua)
+### 6.1 Bootstrap(Vim script)
 - state.vim を source 可能にする最小ローダ。
 - denops 不在時に同期 clone を試行。
 - 通常起動で Deno を起動しない。
@@ -101,9 +104,9 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - 実行時探索を避けるため source 対象を列挙。
 - 単一 state.vim を出力。
 
-### 6.3 Runtime(Vim9 Script)
+### 6.3 Runtime(Vim script)
 - 起動時は state.vim の source のみ。
-- 遅延ロードと hook 実行は Vim9 Script のみで完結。
+- 遅延ロードと hook 実行は Vim script を最小限にし、必要な処理は denops/TypeScript に委譲する。
 
 ## 7. 機能要件
 
@@ -183,6 +186,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
      - runtimepath を直接更新
      - 列挙済みファイルを source
      - hook_source 実行
+     - 可能な限り denops/TypeScript に委譲する
   3. command の場合は本来のコマンドを再実行
 
 ### 7.10 Git sync

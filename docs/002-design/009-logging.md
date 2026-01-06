@@ -29,5 +29,5 @@
 
 ## 対象
 
-- bootstrap（Vim9 Script）
+- bootstrap（Vim script）
 - Deno 側（sync/compile/check 等）も同じパスに追記できる設計とする。

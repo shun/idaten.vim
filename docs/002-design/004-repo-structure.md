@@ -2,7 +2,7 @@
 
 ## 目的
 
-- Vim9 Script と TypeScript の責務を分離する。
+- Vim script と TypeScript の責務を分離する。
 - 通常起動は `state.vim` の `source` のみで成立させる。
 - Deno は `sync/compile` 等の明示操作時のみ起動する。
 
@@ -35,11 +35,11 @@
 ## 役割
 
 - `plugin/idaten.vim`
-  - Vim9 Script の最小 bootstrap。
+  - Vim script の最小 bootstrap。
   - `state.vim` の存在確認と `source`、起動時ガードを担当。
   - denops が無い場合の同期 clone をここで試行する。
 - `autoload/idaten.vim`
-  - Vim9 Script の補助関数（遅延ロード処理や表示用の小関数など）。
+  - Vim script の補助関数（遅延ロード処理や表示用の小関数など）。
 - `denops/idaten/main.ts`
   - denops のエントリポイント。
   - `:Idaten` 各サブコマンドを登録し、TypeScript 側の処理を呼び出す。
@@ -50,11 +50,12 @@
   - `git.ts` で clone/fetch/checkout 等の git 操作を行う。
   - `paths.ts` で `idaten_dir` と各ファイルパスを解決する。
   - `lock.ts` と `import_map.ts` に入出力を分離する。
-  - `runtime.ts` は state から runtime 用の Vim9 Script を生成する。
+  - `runtime.ts` は state から runtime 用の Vim script を生成する。
 - `mod.ts`
   - ユーザ設定のための public API（`ensure`/`lazy`/型定義）。
 
 ## 注意
 
-- すべての Vim Script は Vim9 Script で書く。
+- すべての Vim script は Vim9 を使わず従来の Vim script で書く。
+- Vim script は最小限に留め、重い処理は denops/TypeScript 側で行う。
 - `state.vim` は生成物のため、リポジトリには置かない。
