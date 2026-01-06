@@ -1,1 +1,1 @@
-export const IDATEN_VERSION = "0.0.0";
+export const IDATEN_VERSION = "0.1.1";
