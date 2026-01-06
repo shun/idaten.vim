@@ -51,4 +51,85 @@ function! s:IdatenBootstrap() abort
   execute 'source' fnameescape(l:state_path)
 endfunction
 
+function! s:IdatenComplete(arglead, cmdline, cursorpos) abort
+  let l:subcommands = ['sync', 'compile', 'status', 'check', 'clean', 'lock']
+  let l:words = split(a:cmdline)
+  let l:ends_with_space = a:cmdline =~# '\s$'
+
+  if len(l:words) <= 1
+    return empty(a:arglead)
+      \ ? l:subcommands
+      \ : filter(copy(l:subcommands), 'v:val =~# "^" .. a:arglead')
+  endif
+
+  if len(l:words) == 2 && !l:ends_with_space
+    return empty(a:arglead)
+      \ ? l:subcommands
+      \ : filter(copy(l:subcommands), 'v:val =~# "^" .. a:arglead')
+  endif
+
+  let l:sub = l:words[1]
+  if l:sub ==# 'sync'
+    let l:options = ['--locked']
+    if index(l:words, '--locked') != -1 && a:arglead !=# '--locked'
+      return []
+    endif
+    return empty(a:arglead)
+      \ ? l:options
+      \ : filter(copy(l:options), 'v:val =~# "^" .. a:arglead')
+  endif
+
+  return []
+endfunction
+
+function! s:IdatenCommand(...) abort
+  call idaten#Log('command: Idaten ' .. join(a:000, ' '))
+  if get(g:, 'idaten_disabled', v:false)
+    echohl ErrorMsg
+    echomsg 'idaten: disabled (denops clone failed)'
+    echohl None
+    return
+  endif
+
+  let l:dir = idaten#ResolveDir()
+  if !idaten#EnsureDenops(l:dir)
+    echohl ErrorMsg
+    echomsg 'idaten: denops is not available'
+    echohl None
+    return
+  endif
+
+  let l:name = 'idaten'
+  let l:root = fnamemodify(expand('<sfile>:p'), ':h:h')
+  let l:script = l:root .. '/denops/idaten/main.ts'
+  try
+    if !exists('g:loaded_denops')
+      silent! runtime plugin/denops.vim
+    endif
+    call denops#server#connect_or_start()
+    let l:server_wait = denops#server#wait(#{silent: 1})
+    if l:server_wait < 0
+      echohl ErrorMsg
+      echomsg 'idaten: denops server is not ready'
+      echohl None
+      return
+    endif
+    call denops#plugin#load(l:name, l:script)
+    let l:wait = denops#plugin#wait(l:name, #{silent: 1})
+    if l:wait != 0
+      echohl ErrorMsg
+      echomsg 'idaten: denops failed to start'
+      echohl None
+      return
+    endif
+    call denops#request(l:name, 'command', a:000)
+  catch
+    echohl ErrorMsg
+    echomsg 'idaten: denops request failed: ' .. v:exception
+    echohl None
+  endtry
+endfunction
+
+command! -nargs=* -complete=customlist,s:IdatenComplete Idaten call s:IdatenCommand(<f-args>)
+
 call s:IdatenBootstrap()
