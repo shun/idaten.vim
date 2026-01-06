@@ -1,0 +1,33 @@
+{
+  "lint": {
+    "include": [
+      "src",
+      "denops",
+      "mod.ts",
+      "docs"
+    ],
+    "exclude": [
+      "tmp"
+    ],
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  },
+  "fmt": {
+    "include": [
+      "src",
+      "denops",
+      "mod.ts"
+    ],
+    "exclude": [
+      "docs",
+      "tmp"
+    ],
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false,
+    "semiColons": true
+  }
+}

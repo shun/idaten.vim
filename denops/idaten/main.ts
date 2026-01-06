@@ -1,6 +1,6 @@
 import type { Denops } from "jsr:@denops/core@^8.0.0";
 import { compileState } from "../../src/compile.ts";
-import { loadConfig, normalizePlugins, type NormalizedPlugin } from "../../src/config.ts";
+import { loadConfig, type NormalizedPlugin, normalizePlugins } from "../../src/config.ts";
 import {
   gitCheckout,
   gitClone,
@@ -497,7 +497,7 @@ async function handleLock(denops: Denops, args: string[]): Promise<void> {
   await notify(denops, "MoreMsg", "idaten: lock finished.");
 }
 
-export async function main(denops: Denops): Promise<void> {
+export function main(denops: Denops): void {
   denops.dispatcher = {
     async command(...args: unknown[]): Promise<void> {
       const items = toStringArgs(args);

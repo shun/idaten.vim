@@ -2,8 +2,9 @@ import { type Lazy, type Plugin } from "./types.ts";
 
 type EnsureOptions = Omit<Plugin, "repo">;
 
-type LazyOptions = Omit<Plugin, "repo" | "lazy"> &
-  Pick<Lazy, "on_event" | "on_ft" | "on_cmd">;
+type LazyOptions =
+  & Omit<Plugin, "repo" | "lazy">
+  & Pick<Lazy, "on_event" | "on_ft" | "on_cmd">;
 
 function normalizeLazy(options?: Lazy): Lazy {
   return {

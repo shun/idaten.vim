@@ -1,4 +1,4 @@
-import { loadConfig, normalizePlugins, type NormalizedPlugin } from "./config.ts";
+import { loadConfig, type NormalizedPlugin, normalizePlugins } from "./config.ts";
 import { type State, type StatePlugin } from "./state.ts";
 import { joinPath, repoDir } from "./paths.ts";
 import { IDATEN_VERSION } from "./version.ts";

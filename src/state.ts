@@ -289,7 +289,7 @@ function renderRuntimeVim(): string {
     "endfunction",
     "",
     "function! s:DefineCommand(cmd) abort",
-    "  let l:escaped = escape(a:cmd, \"'\")",
+    '  let l:escaped = escape(a:cmd, "\'")',
     "  execute 'command! -nargs=* -range -count -bang -register -bar ' .. a:cmd",
     "    \\ .. ' call s:CommandStub(''' .. l:escaped .. ''', <q-args>, ''<bang>'', ''<range>'', <count>, ''<mods>'', ''<register>'')'",
     "endfunction",
