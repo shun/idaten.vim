@@ -1,4 +1,9 @@
 {
+  "name": "@shun/idaten-vim",
+  "version": "0.1.0",
+  "exports": "./mod.ts",
+  "license": "MIT",
+  "readme": "README.md",
   "lint": {
     "include": [
       "src",
