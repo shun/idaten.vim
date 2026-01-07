@@ -1,9 +1,12 @@
 {
   "name": "@shun/idaten-vim",
-  "version": "0.1.1",
   "exports": "./mod.ts",
   "license": "MIT",
   "readme": "README.md",
+  "tasks": {
+    "publish": "deno run --allow-run --allow-read scripts/publish.ts",
+    "publish:dry-run": "deno run --allow-run --allow-read scripts/publish.ts --dry-run --allow-dirty"
+  },
   "lint": {
     "include": [
       "src",

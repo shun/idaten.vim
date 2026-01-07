@@ -88,3 +88,9 @@ export async function configure(ctx: Context) {
 - TypeScript モジュール名: `idaten`
 - JSR パッケージ: `@shun/idaten-vim`
 - import map で `idaten` を `jsr:@shun/idaten-vim@<version>` に解決します。
+
+## リリース
+
+- バージョンは `src/version.ts` の `IDATEN_VERSION` を唯一のソースとします。
+- 公開は `deno task publish` を使用します（`deno publish --set-version` を内包）。
+- dry-run は `deno task publish:dry-run` を使います。
