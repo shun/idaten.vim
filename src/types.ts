@@ -1,4 +1,13 @@
-export type Context = Record<string, unknown>;
+import type { Denops } from "jsr:@denops/core@^8.0.0";
+
+export type Context = {
+  denops: Denops;
+};
+
+export type HookSpec = {
+  hook_add?: string;
+  hook_source?: string;
+};
 
 export type Lazy = {
   on_event?: string[];
@@ -7,8 +16,6 @@ export type Lazy = {
 };
 
 export type Hooks = {
-  hook_add?: string;
-  hook_source?: string;
   hook_post_update?: string;
 };
 
@@ -24,6 +31,8 @@ export type Plugin = {
   rtp?: string;
   depends?: string[];
   hooks?: Hooks;
+  hookAdd?: string;
+  hookSource?: string;
   lazy?: Lazy;
   dev?: Dev;
 };

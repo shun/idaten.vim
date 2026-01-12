@@ -6,7 +6,15 @@ export function isLocalPathSpec(spec: string): boolean {
   if (spec.startsWith("file://")) {
     return true;
   }
-  if (spec.startsWith("/") || spec.startsWith("./") || spec.startsWith("../")) {
+  if (
+    spec.startsWith("/") ||
+    spec.startsWith("./") ||
+    spec.startsWith("../") ||
+    spec.startsWith(".\\") ||
+    spec.startsWith("..\\") ||
+    spec === "." ||
+    spec === ".."
+  ) {
     return true;
   }
   if (spec.startsWith("~")) {
@@ -19,12 +27,12 @@ function isSchemeUrl(spec: string): boolean {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(spec);
 }
 
-function isOwnerRepo(spec: string): boolean {
-  return /^[^/\\\s]+\/[^/\\\s]+$/.test(spec);
-}
-
-function isScpLike(spec: string): boolean {
-  return /^[^@\s]+@[^:\s]+:.+$/.test(spec);
+function extractScheme(spec: string): string {
+  const match = spec.match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  if (!match) {
+    return "";
+  }
+  return match[1].toLowerCase();
 }
 
 export function normalizeRepoSpec(spec: string): string {
@@ -35,17 +43,15 @@ export function normalizeRepoSpec(spec: string): string {
   if (isLocalPathSpec(trimmed)) {
     throw new Error(`local path repo is not allowed: ${trimmed}`);
   }
-  if (isSchemeUrl(trimmed)) {
-    if (trimmed.toLowerCase().startsWith("file://")) {
-      throw new Error(`local path repo is not allowed: ${trimmed}`);
-    }
-    return trimmed;
+  if (!isSchemeUrl(trimmed)) {
+    throw new Error(`repo must be a URL: ${trimmed}`);
   }
-  if (isOwnerRepo(trimmed)) {
-    return `https://github.com/${trimmed}.git`;
+  const scheme = extractScheme(trimmed);
+  if (scheme === "file") {
+    throw new Error(`local path repo is not allowed: ${trimmed}`);
   }
-  if (isScpLike(trimmed)) {
-    return trimmed;
+  if (scheme !== "https" && scheme !== "ssh" && scheme !== "git") {
+    throw new Error(`repo scheme is not allowed: ${scheme}`);
   }
-  throw new Error(`invalid repo spec: ${trimmed}`);
+  return trimmed;
 }

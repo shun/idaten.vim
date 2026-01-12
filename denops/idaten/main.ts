@@ -11,6 +11,7 @@ import {
 } from "../../src/git.ts";
 import { lockfilePath, readLockfile, writeLockfile } from "../../src/lock.ts";
 import { joinPath, repoDir } from "../../src/paths.ts";
+import type { Context } from "../../src/types.ts";
 
 function toStringArgs(args: unknown[]): string[] {
   return args.map((arg) => (typeof arg === "string" ? arg : String(arg)));
@@ -21,6 +22,77 @@ function formatError(err: unknown): string {
     return err.message;
   }
   return String(err);
+}
+
+function createContext(denops: Denops): Context {
+  return { denops };
+}
+
+type ConfigOptionResult = {
+  configPath: string;
+  rest: string[];
+  error: string;
+};
+
+function parseConfigOption(args: string[]): ConfigOptionResult {
+  let configPath = "";
+  const rest: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--config") {
+      const value = args[i + 1];
+      if (!value || value.startsWith("--")) {
+        return {
+          configPath: "",
+          rest: [],
+          error: "idaten: --config requires a path.",
+        };
+      }
+      configPath = value;
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--config=")) {
+      const value = arg.slice("--config=".length);
+      if (!value) {
+        return {
+          configPath: "",
+          rest: [],
+          error: "idaten: --config requires a path.",
+        };
+      }
+      configPath = value;
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { configPath, rest, error: "" };
+}
+
+type SyncOptionResult = {
+  configPath: string;
+  rest: string[];
+  locked: boolean;
+  error: string;
+};
+
+function parseSyncOptions(args: string[]): SyncOptionResult {
+  let locked = false;
+  const filtered: string[] = [];
+  for (const arg of args) {
+    if (arg === "--locked") {
+      locked = true;
+      continue;
+    }
+    filtered.push(arg);
+  }
+  const config = parseConfigOption(filtered);
+  return {
+    configPath: config.configPath,
+    rest: config.rest,
+    locked,
+    error: config.error,
+  };
 }
 
 async function notify(
@@ -43,16 +115,21 @@ async function resolveIdatenDir(denops: Denops): Promise<string> {
 }
 
 async function handleCompile(denops: Denops, args: string[]): Promise<void> {
-  if (args.length > 0) {
-    await notify(denops, "WarningMsg", "idaten: compile does not take arguments.");
+  const parsed = parseConfigOption(args);
+  if (parsed.error) {
+    await notify(denops, "WarningMsg", parsed.error);
+    return;
+  }
+  for (const arg of parsed.rest) {
+    await notify(denops, "WarningMsg", `idaten: unsupported option: ${arg}`);
   }
 
-  const configPath = await resolveConfigPath(denops);
+  const configPath = parsed.configPath || await resolveConfigPath(denops);
   if (!configPath) {
     await notify(
       denops,
       "WarningMsg",
-      "idaten: g:idaten_config is empty. Set a config path.",
+      "idaten: g:idaten_config is empty. Set a config path or use --config.",
     );
     return;
   }
@@ -61,7 +138,7 @@ async function handleCompile(denops: Denops, args: string[]): Promise<void> {
   await denops.call("idaten#Log", `compile: start config=${configPath}`);
 
   try {
-    await compileState({ configPath, idatenDir });
+    await compileState({ configPath, idatenDir, context: createContext(denops) });
   } catch (err) {
     const message = formatError(err);
     await denops.call("idaten#Log", `compile: failed ${message}`);
@@ -86,9 +163,14 @@ async function isDirectory(path: string): Promise<boolean> {
   }
 }
 
-async function loadPlugins(configPath: string, idatenDir: string): Promise<NormalizedPlugin[]> {
-  const plugins = await loadConfig(configPath, idatenDir);
-  return normalizePlugins(plugins);
+async function loadPlugins(
+  configPath: string,
+  idatenDir: string,
+  denops: Denops,
+): Promise<NormalizedPlugin[]> {
+  const ctx = createContext(denops);
+  const plugins = await loadConfig(configPath, idatenDir, ctx);
+  return await normalizePlugins(plugins, ctx);
 }
 
 async function notifyLines(
@@ -124,24 +206,25 @@ async function collectGitRoots(root: string): Promise<string[]> {
 }
 
 async function handleSync(denops: Denops, args: string[]): Promise<void> {
-  let locked = false;
-  for (const arg of args) {
-    if (arg === "--locked") {
-      locked = true;
-      continue;
-    }
+  const parsed = parseSyncOptions(args);
+  if (parsed.error) {
+    await notify(denops, "WarningMsg", parsed.error);
+    return;
+  }
+  for (const arg of parsed.rest) {
     await notify(denops, "WarningMsg", `idaten: unsupported option: ${arg}`);
   }
 
-  const configPath = await resolveConfigPath(denops);
+  const configPath = parsed.configPath || await resolveConfigPath(denops);
   if (!configPath) {
     await notify(
       denops,
       "WarningMsg",
-      "idaten: g:idaten_config is empty. Set a config path.",
+      "idaten: g:idaten_config is empty. Set a config path or use --config.",
     );
     return;
   }
+  const locked = parsed.locked;
   const idatenDir = await resolveIdatenDir(denops);
   await denops.call("idaten#Log", `sync: start config=${configPath}`);
 
@@ -160,7 +243,7 @@ async function handleSync(denops: Denops, args: string[]): Promise<void> {
 
   let plugins: NormalizedPlugin[] = [];
   try {
-    plugins = await loadPlugins(configPath, idatenDir);
+    plugins = await loadPlugins(configPath, idatenDir, denops);
   } catch (err) {
     const message = formatError(err);
     await denops.call("idaten#Log", `sync: config failed ${message}`);
@@ -182,7 +265,7 @@ async function handleSync(denops: Denops, args: string[]): Promise<void> {
       );
       return;
     }
-    const installPath = repoDir(idatenDir, plugin.name);
+    const installPath = repoDir(idatenDir, plugin.repo);
     const exists = await isDirectory(installPath);
     if (!exists) {
       const result = await gitClone(plugin.repo, installPath);
@@ -244,7 +327,7 @@ async function handleSync(denops: Denops, args: string[]): Promise<void> {
   }
 
   try {
-    await compileState({ configPath, idatenDir });
+    await compileState({ configPath, idatenDir, context: createContext(denops) });
   } catch (err) {
     const message = formatError(err);
     await denops.call("idaten#Log", `sync: compile failed ${message}`);
@@ -274,7 +357,7 @@ async function handleStatus(denops: Denops, args: string[]): Promise<void> {
 
   let plugins: NormalizedPlugin[] = [];
   try {
-    plugins = await loadPlugins(configPath, idatenDir);
+    plugins = await loadPlugins(configPath, idatenDir, denops);
   } catch (err) {
     const message = formatError(err);
     await denops.call("idaten#Log", `status: config failed ${message}`);
@@ -292,7 +375,7 @@ async function handleStatus(denops: Denops, args: string[]): Promise<void> {
       devOverride.push(plugin.name);
       continue;
     }
-    const path = repoDir(idatenDir, plugin.name);
+    const path = repoDir(idatenDir, plugin.repo);
     desired.add(path);
     if (!(await isDirectory(path))) {
       missing.push(plugin.name);
@@ -319,7 +402,7 @@ async function handleStatus(denops: Denops, args: string[]): Promise<void> {
       if (!expected) {
         continue;
       }
-      const path = repoDir(idatenDir, plugin.name);
+      const path = repoDir(idatenDir, plugin.repo);
       if (!(await isDirectory(path))) {
         continue;
       }
@@ -398,7 +481,7 @@ async function handleClean(denops: Denops, args: string[]): Promise<void> {
 
   let plugins: NormalizedPlugin[] = [];
   try {
-    plugins = await loadPlugins(configPath, idatenDir);
+    plugins = await loadPlugins(configPath, idatenDir, denops);
   } catch (err) {
     const message = formatError(err);
     await denops.call("idaten#Log", `clean: config failed ${message}`);
@@ -411,7 +494,7 @@ async function handleClean(denops: Denops, args: string[]): Promise<void> {
     if (plugin.dev.enable) {
       continue;
     }
-    desired.add(repoDir(idatenDir, plugin.name));
+    desired.add(repoDir(idatenDir, plugin.repo));
   }
   const reposRoot = joinPath(idatenDir, "repos");
   const roots = await collectGitRoots(reposRoot);
@@ -460,7 +543,7 @@ async function handleLock(denops: Denops, args: string[]): Promise<void> {
 
   let plugins: NormalizedPlugin[] = [];
   try {
-    plugins = await loadPlugins(configPath, idatenDir);
+    plugins = await loadPlugins(configPath, idatenDir, denops);
   } catch (err) {
     const message = formatError(err);
     await denops.call("idaten#Log", `lock: config failed ${message}`);
@@ -473,7 +556,7 @@ async function handleLock(denops: Denops, args: string[]): Promise<void> {
     if (plugin.dev.enable) {
       continue;
     }
-    const path = repoDir(idatenDir, plugin.name);
+    const path = repoDir(idatenDir, plugin.repo);
     if (!(await isDirectory(path))) {
       await notify(
         denops,

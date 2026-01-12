@@ -2,10 +2,12 @@ import { buildState } from "./builder.ts";
 import { writeImportMap } from "./import_map.ts";
 import { renderStateVim } from "./state.ts";
 import { joinPath } from "./paths.ts";
+import type { Context } from "./types.ts";
 
 type CompileOptions = {
   configPath: string;
   idatenDir: string;
+  context: Context;
 };
 
 async function ensureDir(path: string): Promise<void> {

@@ -15,11 +15,13 @@ function repoSegments(spec: string): string[] {
   let host = "";
   let path = "";
   if (/^[a-z][a-z0-9+.-]*:\/\//.test(spec)) {
-    const rest = spec.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
-    const parts = rest.split("/");
-    host = parts[0] ?? "";
-    if (parts.length > 1) {
-      path = parts.slice(1).join("/");
+    try {
+      const url = new URL(spec);
+      host = url.host;
+      path = url.pathname;
+    } catch {
+      host = "";
+      path = spec;
     }
   } else {
     path = spec;
@@ -29,7 +31,7 @@ function repoSegments(spec: string): string[] {
   path = stripSlashes(path);
 
   let segments = path.length ? path.split("/") : [];
-  if (host && host !== "github.com" && host !== "www.github.com") {
+  if (host) {
     segments = [host, ...segments];
   }
   if (segments.length === 0) {

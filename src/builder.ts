@@ -1,11 +1,16 @@
-import { loadConfig, type NormalizedPlugin, normalizePlugins } from "./config.ts";
+import { pathToFileURL } from "node:url";
+import type { ImportMapImporter } from "jsr:@lambdalisue/import-map-importer@^0.5.1";
+import { createImporter, loadConfig, type NormalizedPlugin, normalizePlugins } from "./config.ts";
 import { type State, type StatePlugin } from "./state.ts";
 import { joinPath, repoDir } from "./paths.ts";
 import { IDATEN_VERSION } from "./version.ts";
+import { isLocalPathSpec } from "./repo.ts";
+import type { Context, HookSpec } from "./types.ts";
 
 type BuildOptions = {
   configPath: string;
   idatenDir: string;
+  context: Context;
 };
 
 async function isDirectory(path: string): Promise<boolean> {
@@ -147,11 +152,118 @@ function normalizeTriggers(triggers: Record<string, string[]>): Record<string, s
   return normalized;
 }
 
+type HookModule = {
+  hook_add?: unknown;
+  hook_source?: unknown;
+  hooks?: (ctx: Context) => HookSpec | Promise<HookSpec>;
+};
+
+type HookModuleResult = {
+  hook_add: string;
+  hook_source: string;
+  has_add: boolean;
+  has_source: boolean;
+};
+
+function normalizeHookValue(value: unknown, label: string, modulePath: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${label} must be a string in ${modulePath}`);
+  }
+  return value;
+}
+
+async function resolveHookModule(
+  importer: ImportMapImporter,
+  modulePath: string,
+  ctx: Context,
+  cache: Map<string, HookModuleResult>,
+): Promise<HookModuleResult> {
+  const moduleUrl = pathToFileURL(modulePath).href;
+  const cached = cache.get(moduleUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const mod = await importer.import<HookModule>(moduleUrl);
+  const result: HookModuleResult = {
+    hook_add: "",
+    hook_source: "",
+    has_add: false,
+    has_source: false,
+  };
+
+  if (typeof mod.hook_add !== "undefined") {
+    result.hook_add = normalizeHookValue(mod.hook_add, "hook_add", modulePath);
+    result.has_add = true;
+  }
+  if (typeof mod.hook_source !== "undefined") {
+    result.hook_source = normalizeHookValue(mod.hook_source, "hook_source", modulePath);
+    result.has_source = true;
+  }
+
+  if (typeof mod.hooks !== "undefined") {
+    if (typeof mod.hooks !== "function") {
+      throw new Error(`hooks must be a function in ${modulePath}`);
+    }
+    const hooks = await mod.hooks(ctx);
+    if (!hooks || typeof hooks !== "object" || Array.isArray(hooks)) {
+      throw new Error(`hooks must return an object in ${modulePath}`);
+    }
+    if ("hook_add" in hooks) {
+      result.hook_add = normalizeHookValue(
+        (hooks as HookSpec).hook_add,
+        "hook_add",
+        modulePath,
+      );
+      result.has_add = true;
+    }
+    if ("hook_source" in hooks) {
+      result.hook_source = normalizeHookValue(
+        (hooks as HookSpec).hook_source,
+        "hook_source",
+        modulePath,
+      );
+      result.has_source = true;
+    }
+  }
+
+  cache.set(moduleUrl, result);
+  return result;
+}
+
+async function resolvePluginHooks(
+  plugin: NormalizedPlugin,
+  importer: ImportMapImporter,
+  ctx: Context,
+  cache: Map<string, HookModuleResult>,
+): Promise<{ add: string; source: string }> {
+  let add = "";
+  let source = "";
+  if (plugin.hook_add_path) {
+    const spec = await resolveHookModule(importer, plugin.hook_add_path, ctx, cache);
+    if (!spec.has_add) {
+      throw new Error(`hook_add is missing in ${plugin.hook_add_path} for ${plugin.name}`);
+    }
+    add = spec.hook_add;
+  }
+  if (plugin.hook_source_path) {
+    const spec = await resolveHookModule(importer, plugin.hook_source_path, ctx, cache);
+    if (!spec.has_source) {
+      throw new Error(`hook_source is missing in ${plugin.hook_source_path} for ${plugin.name}`);
+    }
+    source = spec.hook_source;
+  }
+  return { add, source };
+}
+
 async function buildPluginState(
   plugin: NormalizedPlugin,
   idatenDir: string,
+  hooks: { add: string; source: string },
 ): Promise<StatePlugin> {
-  const installPath = repoDir(idatenDir, plugin.name);
+  const installPath = isLocalPathSpec(plugin.repo)
+    ? plugin.dev.override_path
+    : repoDir(idatenDir, plugin.repo);
   const basePath = plugin.dev.enable ? plugin.dev.override_path : installPath;
   const rtpBase = plugin.rtp ? joinPath(basePath, plugin.rtp) : basePath;
 
@@ -185,8 +297,8 @@ async function buildPluginState(
     depends: plugin.depends,
     lazy: plugin.lazy,
     hooks: {
-      add: plugin.hooks.add,
-      source: plugin.hooks.source,
+      add: hooks.add,
+      source: hooks.source,
     },
     sources,
     boot_sources: bootSources,
@@ -199,8 +311,14 @@ async function buildPluginState(
 }
 
 export async function buildState(options: BuildOptions): Promise<State> {
-  const plugins = await loadConfig(options.configPath, options.idatenDir);
-  const normalized = normalizePlugins(plugins);
+  const importer = await createImporter(options.idatenDir);
+  const plugins = await loadConfig(
+    options.configPath,
+    options.idatenDir,
+    options.context,
+    importer,
+  );
+  const normalized = await normalizePlugins(plugins, options.context);
 
   const byName = new Map<string, NormalizedPlugin>();
   for (const plugin of normalized) {
@@ -228,8 +346,10 @@ export async function buildState(options: BuildOptions): Promise<State> {
   }
 
   const statePlugins: Record<string, StatePlugin> = {};
+  const hookCache = new Map<string, HookModuleResult>();
   for (const plugin of normalized) {
-    statePlugins[plugin.name] = await buildPluginState(plugin, options.idatenDir);
+    const hooks = await resolvePluginHooks(plugin, importer, options.context, hookCache);
+    statePlugins[plugin.name] = await buildPluginState(plugin, options.idatenDir, hooks);
   }
 
   return {

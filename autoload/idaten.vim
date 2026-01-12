@@ -94,6 +94,9 @@ function! s:RepoSegments(spec) abort
     let l:rest = substitute(a:spec, '^[a-z][a-z0-9+.-]*://', '', '')
     let l:parts = split(l:rest, '/', 1)
     let l:host = l:parts[0]
+    if l:host =~# '@'
+      let l:host = split(l:host, '@')[-1]
+    endif
     if len(l:parts) > 1
       let l:path = join(l:parts[1 : ], '/')
     endif
@@ -107,7 +110,7 @@ function! s:RepoSegments(spec) abort
   if !empty(l:path)
     let l:segments = split(l:path, '/', 1)
   endif
-  if !empty(l:host) && l:host !=# 'github.com' && l:host !=# 'www.github.com'
+  if !empty(l:host)
     call insert(l:segments, l:host, 0)
   endif
   if empty(l:segments)
@@ -138,7 +141,7 @@ function! idaten#EnsureDenops(idaten_dir) abort
     endif
   endfor
 
-  let l:denops_repo = get(g:, 'idaten_denops_repo', 'vim-denops/denops.vim')
+  let l:denops_repo = get(g:, 'idaten_denops_repo', 'https://github.com/vim-denops/denops.vim.git')
   let l:denops_path = idaten#RepoDir(a:idaten_dir, l:denops_repo)
   if filereadable(l:denops_path .. '/plugin/denops.vim')
     call idaten#EnsureRuntimePath(l:denops_path)
@@ -157,8 +160,8 @@ function! idaten#CloneDenops(idaten_dir) abort
   if empty(l:denops_repo)
     return 'g:idaten_denops_repo is empty. Set a clone source.'
   endif
-  if l:denops_repo !~# '^[a-z][a-z0-9+.-]*://' && l:denops_repo =~# '^[^/][^ ]*/[^/][^ ]*$'
-    let l:denops_repo = 'https://github.com/' .. l:denops_repo .. '.git'
+  if l:denops_repo !~# '^\%(https\|ssh\|git\)://'
+    return 'g:idaten_denops_repo must be a https/ssh/git URL.'
   endif
 
   let l:repos_dir = a:idaten_dir .. '/repos'

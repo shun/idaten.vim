@@ -9,7 +9,7 @@ if get(g:, 'idaten_disabled', v:false)
 endif
 
 if !exists('g:idaten_denops_repo') || empty(g:idaten_denops_repo)
-  let g:idaten_denops_repo = 'vim-denops/denops.vim'
+  let g:idaten_denops_repo = 'https://github.com/vim-denops/denops.vim.git'
 endif
 
 function! s:IdatenBootstrap() abort
@@ -51,6 +51,15 @@ function! s:IdatenBootstrap() abort
   execute 'source' fnameescape(l:state_path)
 endfunction
 
+function! s:HasConfigOption(words) abort
+  for l:word in a:words
+    if l:word =~# '^--config'
+      return v:true
+    endif
+  endfor
+  return v:false
+endfunction
+
 function! s:IdatenComplete(arglead, cmdline, cursorpos) abort
   let l:subcommands = ['sync', 'compile', 'status', 'check', 'clean', 'lock']
   let l:words = split(a:cmdline)
@@ -70,9 +79,22 @@ function! s:IdatenComplete(arglead, cmdline, cursorpos) abort
 
   let l:sub = l:words[1]
   if l:sub ==# 'sync'
-    let l:options = ['--locked']
-    if index(l:words, '--locked') != -1 && a:arglead !=# '--locked'
-      return []
+    let l:options = ['--locked', '--config']
+    if index(l:words, '--locked') != -1
+      call filter(l:options, 'v:val !=# "--locked"')
+    endif
+    if s:HasConfigOption(l:words)
+      call filter(l:options, 'v:val !=# "--config"')
+    endif
+    return empty(a:arglead)
+      \ ? l:options
+      \ : filter(copy(l:options), 'v:val =~# "^" .. a:arglead')
+  endif
+
+  if l:sub ==# 'compile'
+    let l:options = ['--config']
+    if s:HasConfigOption(l:words)
+      call filter(l:options, 'v:val !=# "--config"')
     endif
     return empty(a:arglead)
       \ ? l:options
