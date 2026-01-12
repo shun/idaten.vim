@@ -30,13 +30,5 @@ export async function writeImportMap(idatenDir: string): Promise<void> {
 
 export async function ensureImportMap(idatenDir: string): Promise<void> {
   await Deno.mkdir(idatenDir, { recursive: true });
-  try {
-    await Deno.stat(importMapPath(idatenDir));
-  } catch (err) {
-    if (err instanceof Deno.errors.NotFound) {
-      await writeImportMap(idatenDir);
-      return;
-    }
-    throw err;
-  }
+  await writeImportMap(idatenDir);
 }

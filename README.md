@@ -120,6 +120,7 @@ export async function hooks(ctx: Context) {
 - TypeScript モジュール名: `idaten`
 - JSR パッケージ: `@shun/idaten-vim`
 - import map で `idaten` を `jsr:@shun/idaten-vim@<version>` に解決します（`g:idaten_repo_path` が有効な場合はローカルパス）。
+- import map は設定読み込みの前に常に再生成されます。
 
 ## リリース
 

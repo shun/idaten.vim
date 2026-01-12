@@ -40,8 +40,9 @@
 
 ### 生成タイミング
 
-- `:Idaten compile` で生成/更新する。
-- `:Idaten sync` は compile を内包するため、同様に更新される。
+- 設定読み込みの前に常に再生成する。
+- 対象コマンド: `:Idaten compile`/`:Idaten sync`/`:Idaten update`/`:Idaten status`/`:Idaten clean`/`:Idaten lock`
+- `:Idaten sync` は compile を内包するため、実行後は必ず最新になる。
 
 ### 配置
 
