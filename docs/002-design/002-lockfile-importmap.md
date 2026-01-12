@@ -60,7 +60,7 @@
 ### 値
 
 - リリース時: `"jsr:@shun/idaten-vim@<version>"`
-- 開発時: `IDATEN_DEV=1` の場合はローカルパス
+- 開発時: `IDATEN_DEV=1` または `g:idaten_repo_path` が有効な場合はローカルパス
 - `<version>` は `src/version.ts` の `IDATEN_VERSION` を使用する（`deno.json` に `version` は置かない）。
 
 ※ 競合回避用の別キー（例: `idaten_vim`）は v1 では扱わない。

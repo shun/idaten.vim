@@ -149,7 +149,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - import from "idaten" を利用可能。
 - import map で次を解決:
   - リリース時: jsr:@shun/idaten-vim@<version>
-  - 開発時: ローカルパス
+  - 開発時: ローカルパス（`IDATEN_DEV=1` または `g:idaten_repo_path` が有効）
 - 競合回避用の別キー(idaten_vim 等)を将来許容。
 
 ### 7.5 プラグイン定義モデル

@@ -257,6 +257,31 @@ async function resolvePath(denops: Denops, path: string): Promise<string> {
   return typeof expanded === "string" ? expanded : path;
 }
 
+async function autoEnableIdatenDev(denops: Denops): Promise<void> {
+  let envDev = false;
+  try {
+    envDev = Deno.env.get("IDATEN_DEV") === "1";
+  } catch {
+    envDev = false;
+  }
+  if (envDev) {
+    return;
+  }
+  const rawLocalPath = await denops.eval("get(g:, 'idaten_repo_path', '')") as string;
+  if (typeof rawLocalPath !== "string" || rawLocalPath.trim().length === 0) {
+    return;
+  }
+  const localPath = await resolvePath(denops, rawLocalPath);
+  if (!(await isDirectory(localPath))) {
+    return;
+  }
+  try {
+    Deno.env.set("IDATEN_DEV", "1");
+  } catch {
+    await denops.call("idaten#Log", "auto dev: failed to set IDATEN_DEV");
+  }
+}
+
 async function loadPlugins(
   configPath: string,
   idatenDir: string,
@@ -856,6 +881,8 @@ export function main(denops: Denops): void {
       const items = toStringArgs(args);
       const subcommand = items[0] ?? "";
       const rest = items.slice(1);
+
+      await autoEnableIdatenDev(denops);
 
       if (subcommand === "compile") {
         await handleCompile(denops, rest);
