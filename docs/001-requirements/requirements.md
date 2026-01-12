@@ -22,6 +22,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 ### 2.2 Ex コマンド
 - :Idaten sync
 - :Idaten compile
+- :Idaten update
 - :Idaten status
 - :Idaten check
 - :Idaten clean
@@ -55,6 +56,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - 遅延読み込み: event / FileType / command
 - git URL のみで取得(clone/fetch/checkout)
 - sync が compile をデフォルト内包
+- update による最新化/指定rev checkout
 - clean / status / check / lock(任意)
 - dev override(ローカル作業ツリー)
 - 起動時の denops 同期 clone
@@ -217,7 +219,19 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - clone/fetch は並列実行(最大並列は設定可能)。
 - 一部失敗時は全体失敗とし compile は実行しない。
 
-### 7.11 Dev override
+### 7.11 Update
+- :Idaten update は git clone/fetch/checkout のみを行う。
+- compile/lock は実行しない。
+- `--rev <rev>` があればその rev を優先する。
+- `--rev` が無い場合は `plugin.rev` を尊重する。
+- rev 指定が無い場合は既存 clone を `FETCH_HEAD` に checkout する。
+- `--rev` 指定時は対象の name 指定を必須とする。
+- dev override は対象外としてスキップする。
+- `--self` 指定時は idaten 本体を更新する（プラグイン指定は不可）。
+- `g:idaten_repo_path` が有効な場合は `--self` をスキップする。
+- `--self` は設定ファイルが未指定でも実行できる。
+
+### 7.12 Dev override
 - dev.enable が true の場合:
   - overridePath は必須とする
   - overridePath をロード対象にする
@@ -229,13 +243,13 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - ローカルパスは `expand()` と `fnamemodify(:p)` で展開・絶対化する。
 - 相対パス（`./` または `../`）は compile 実行時の Vim のカレントディレクトリを基準に解決する。
 
-### 7.12 Lock(任意)
+### 7.13 Lock(任意)
 - :Idaten lock で lockfile を生成/更新。
 - lockfile は name から commit hash を保持。
 - sync --locked(同等) で lock を強制。
 - 通常 sync は lock を強制しない。
 
-### 7.13 Clean / Status / Check
+### 7.14 Clean / Status / Check
 - clean:
   - Desired State に無い管理対象を削除
   - dry-run または確認フローを必須
@@ -248,16 +262,18 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - 管理ディレクトリ権限
   - state.vim の整合性
 
-### 7.14 Logging
+### 7.15 Logging
 - ログ出力は任意（無効がデフォルト）。
 - `g:idaten_log_enabled` で有効/無効を制御する。
 - 出力先は `g:idaten_log_path` で指定する。
 - 既定の出力先は `/tmp/idaten` とする。
 
-### 7.15 コマンド補完
+### 7.16 コマンド補完
 - `:Idaten` はサブコマンド補完を提供する。
-- 補完対象は `compile/sync/status/check/clean/lock` とする。
+- 補完対象は `compile/sync/update/status/check/clean/lock` とする。
 - `:Idaten sync` では `--locked` を補完対象に含める。
+- `:Idaten update` では `--rev` を補完対象に含める。
+- `:Idaten update` では `--self` を補完対象に含める。
 
 ## 8. データ仕様
 

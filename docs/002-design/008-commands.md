@@ -1,4 +1,4 @@
-# 設計: コマンド（sync/compile/status/check/clean/lock）
+# 設計: コマンド（sync/compile/update/status/check/clean/lock）
 
 ## 目的
 
@@ -9,8 +9,8 @@
 
 - Deno を起動するのは `:Idaten` 実行時のみ。
 - `state.vim` は失敗時に更新しない。
-- dev override は `sync/clean/lock` の対象外。
-- `:Idaten` はサブコマンド補完を提供する（`compile/sync/status/check/clean/lock`）。
+- dev override は `sync/update/clean/lock` の対象外。
+- `:Idaten` はサブコマンド補完を提供する（`compile/sync/update/status/check/clean/lock`）。
 
 ## :Idaten compile
 
@@ -38,6 +38,19 @@
 - lockfile を強制する（lockfile が無い場合はエラー）。
 - lockfile に存在しない `name` はエラーとする。
 - `:Idaten sync` の補完で `--locked` を提示する。
+
+## :Idaten update
+
+- git clone/fetch/checkout のみを行い、compile は実行しない。
+- 設定パスは bootstrap で決定されたものを使用する。
+- dev override は対象外としてスキップする。
+- 対象は `name` 未指定なら全件、指定があればそのプラグインのみ。
+- `--rev <rev>` 指定時はその revision を優先する（未指定時は `plugin.rev` を尊重）。
+- rev が無い場合は、既存 clone は `FETCH_HEAD` を checkout する。
+- `--rev` と対象指定の無い更新はエラーとする。
+- `--self` 指定時は idaten 本体を更新し、プラグイン指定は受け付けない。
+- `g:idaten_repo_path` が有効な場合は `--self` をスキップする。
+- `--self` は設定ファイルの有無に関わらず実行できる。
 
 ## :Idaten status
 

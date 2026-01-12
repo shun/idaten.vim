@@ -11,6 +11,7 @@ import {
 } from "../../src/git.ts";
 import { lockfilePath, readLockfile, writeLockfile } from "../../src/lock.ts";
 import { joinPath, repoDir } from "../../src/paths.ts";
+import { normalizeRepoSpec } from "../../src/repo.ts";
 import type { Context } from "../../src/types.ts";
 
 function toStringArgs(args: unknown[]): string[] {
@@ -95,6 +96,90 @@ function parseSyncOptions(args: string[]): SyncOptionResult {
   };
 }
 
+type UpdateOptionResult = {
+  rev: string;
+  names: string[];
+  unknown: string[];
+  self: boolean;
+  error: string;
+};
+
+function parseUpdateOptions(args: string[]): UpdateOptionResult {
+  let rev = "";
+  let self = false;
+  const names: string[] = [];
+  const unknown: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--self") {
+      if (self) {
+        return {
+          rev: "",
+          names: [],
+          unknown: [],
+          self: false,
+          error: "idaten: --self is specified multiple times.",
+        };
+      }
+      self = true;
+      continue;
+    }
+    if (arg === "--rev") {
+      const value = args[i + 1];
+      if (!value || value.startsWith("--")) {
+        return {
+          rev: "",
+          names: [],
+          unknown: [],
+          self: false,
+          error: "idaten: --rev requires a revision.",
+        };
+      }
+      if (rev.length > 0) {
+        return {
+          rev: "",
+          names: [],
+          unknown: [],
+          self: false,
+          error: "idaten: --rev is specified multiple times.",
+        };
+      }
+      rev = value;
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--rev=")) {
+      const value = arg.slice("--rev=".length);
+      if (!value) {
+        return {
+          rev: "",
+          names: [],
+          unknown: [],
+          self: false,
+          error: "idaten: --rev requires a revision.",
+        };
+      }
+      if (rev.length > 0) {
+        return {
+          rev: "",
+          names: [],
+          unknown: [],
+          self: false,
+          error: "idaten: --rev is specified multiple times.",
+        };
+      }
+      rev = value;
+      continue;
+    }
+    if (arg.startsWith("--")) {
+      unknown.push(arg);
+      continue;
+    }
+    names.push(arg);
+  }
+  return { rev, names, unknown, self, error: "" };
+}
+
 async function notify(
   denops: Denops,
   hl: string,
@@ -161,6 +246,15 @@ async function isDirectory(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function resolvePath(denops: Denops, path: string): Promise<string> {
+  const expanded = await denops.call("expand", path) as string;
+  const absolute = await denops.call("fnamemodify", expanded, ":p") as string;
+  if (typeof absolute === "string" && absolute.length > 0) {
+    return absolute;
+  }
+  return typeof expanded === "string" ? expanded : path;
 }
 
 async function loadPlugins(
@@ -337,6 +431,182 @@ async function handleSync(denops: Denops, args: string[]): Promise<void> {
 
   await denops.call("idaten#Log", "sync: done");
   await notify(denops, "MoreMsg", "idaten: sync finished.");
+}
+
+async function handleUpdate(denops: Denops, args: string[]): Promise<void> {
+  const parsed = parseUpdateOptions(args);
+  if (parsed.error) {
+    await notify(denops, "WarningMsg", parsed.error);
+    return;
+  }
+  for (const arg of parsed.unknown) {
+    await notify(denops, "WarningMsg", `idaten: unsupported option: ${arg}`);
+  }
+  if (parsed.self && parsed.names.length > 0) {
+    await notify(denops, "WarningMsg", "idaten: --self does not take plugin names.");
+    return;
+  }
+  if (parsed.rev.length > 0 && parsed.names.length === 0) {
+    if (!parsed.self) {
+      await notify(denops, "WarningMsg", "idaten: --rev requires plugin names.");
+      return;
+    }
+  }
+
+  const idatenDir = await resolveIdatenDir(denops);
+  if (parsed.self) {
+    const rawLocalPath = await denops.eval("get(g:, 'idaten_repo_path', '')") as string;
+    if (typeof rawLocalPath === "string" && rawLocalPath.trim().length > 0) {
+      const localPath = await resolvePath(denops, rawLocalPath);
+      if (await isDirectory(localPath)) {
+        await notify(
+          denops,
+          "WarningMsg",
+          `idaten: update skipped (local repo): ${localPath}`,
+        );
+        return;
+      }
+    }
+
+    const rawRepoUrl = await denops.eval("get(g:, 'idaten_repo_url', '')") as string;
+    const repoUrl = typeof rawRepoUrl === "string" && rawRepoUrl.trim().length > 0
+      ? rawRepoUrl.trim()
+      : "https://github.com/shun/idaten.vim.git";
+    let repo = "";
+    try {
+      repo = normalizeRepoSpec(repoUrl);
+    } catch (err) {
+      const message = formatError(err);
+      await denops.call("idaten#Log", `update: self failed ${message}`);
+      await notify(denops, "ErrorMsg", `idaten: update failed: ${message}`);
+      return;
+    }
+    await denops.call("idaten#Log", `update: self start repo=${repo}`);
+    const installPath = repoDir(idatenDir, repo);
+    const exists = await isDirectory(installPath);
+    if (!exists) {
+      const result = await gitClone(repo, installPath);
+      if (result.code !== 0) {
+        const message = formatGitError("clone failed", result.stderr || result.stdout);
+        await denops.call("idaten#Log", `update: self ${message}`);
+        await notify(denops, "ErrorMsg", `idaten: ${message}`);
+        return;
+      }
+    } else {
+      const result = await gitFetch(installPath);
+      if (result.code !== 0) {
+        const message = formatGitError("fetch failed", result.stderr || result.stdout);
+        await denops.call("idaten#Log", `update: self ${message}`);
+        await notify(denops, "ErrorMsg", `idaten: ${message}`);
+        return;
+      }
+    }
+
+    let rev = parsed.rev;
+    if (rev.length === 0 && exists) {
+      rev = "FETCH_HEAD";
+    }
+    if (rev.length > 0) {
+      const result = await gitCheckout(installPath, rev);
+      if (result.code !== 0) {
+        const message = formatGitError("checkout failed", result.stderr || result.stdout);
+        await denops.call("idaten#Log", `update: self ${message}`);
+        await notify(denops, "ErrorMsg", `idaten: ${message}`);
+        return;
+      }
+    }
+
+    await denops.call("idaten#Log", "update: self done");
+    await notify(denops, "MoreMsg", "idaten: update self finished.");
+    return;
+  }
+
+  const configPath = await resolveConfigPath(denops);
+  if (!configPath) {
+    await notify(
+      denops,
+      "WarningMsg",
+      "idaten: g:idaten_config is empty. Set a config path.",
+    );
+    return;
+  }
+  await denops.call("idaten#Log", `update: start config=${configPath}`);
+
+  let plugins: NormalizedPlugin[] = [];
+  try {
+    plugins = await loadPlugins(configPath, idatenDir, denops);
+  } catch (err) {
+    const message = formatError(err);
+    await denops.call("idaten#Log", `update: config failed ${message}`);
+    await notify(denops, "ErrorMsg", `idaten: update failed: ${message}`);
+    return;
+  }
+
+  let targets: NormalizedPlugin[] = [];
+  if (parsed.names.length === 0) {
+    targets = plugins;
+  } else {
+    const map = new Map(plugins.map((plugin) => [plugin.name, plugin]));
+    const unique = [...new Set(parsed.names)];
+    for (const name of unique) {
+      const plugin = map.get(name);
+      if (!plugin) {
+        await notify(denops, "ErrorMsg", `idaten: update failed: ${name} not found.`);
+        return;
+      }
+      targets.push(plugin);
+    }
+  }
+
+  for (const plugin of targets) {
+    if (plugin.dev.enable) {
+      await notify(
+        denops,
+        "WarningMsg",
+        `idaten: update skipped (dev override): ${plugin.name}`,
+      );
+      continue;
+    }
+    const installPath = repoDir(idatenDir, plugin.repo);
+    const exists = await isDirectory(installPath);
+    if (!exists) {
+      const result = await gitClone(plugin.repo, installPath);
+      if (result.code !== 0) {
+        const message = formatGitError("clone failed", result.stderr || result.stdout);
+        await denops.call("idaten#Log", `update: ${message}`);
+        await notify(denops, "ErrorMsg", `idaten: ${message}`);
+        return;
+      }
+    } else {
+      const result = await gitFetch(installPath);
+      if (result.code !== 0) {
+        const message = formatGitError("fetch failed", result.stderr || result.stdout);
+        await denops.call("idaten#Log", `update: ${message}`);
+        await notify(denops, "ErrorMsg", `idaten: ${message}`);
+        return;
+      }
+    }
+
+    let rev = parsed.rev;
+    if (rev.length === 0 && plugin.rev.length > 0) {
+      rev = plugin.rev;
+    }
+    if (rev.length === 0 && exists) {
+      rev = "FETCH_HEAD";
+    }
+    if (rev.length > 0) {
+      const result = await gitCheckout(installPath, rev);
+      if (result.code !== 0) {
+        const message = formatGitError("checkout failed", result.stderr || result.stdout);
+        await denops.call("idaten#Log", `update: ${message}`);
+        await notify(denops, "ErrorMsg", `idaten: ${message}`);
+        return;
+      }
+    }
+  }
+
+  await denops.call("idaten#Log", "update: done");
+  await notify(denops, "MoreMsg", "idaten: update finished.");
 }
 
 async function handleStatus(denops: Denops, args: string[]): Promise<void> {
@@ -593,6 +863,10 @@ export function main(denops: Denops): void {
       }
       if (subcommand === "sync") {
         await handleSync(denops, rest);
+        return;
+      }
+      if (subcommand === "update") {
+        await handleUpdate(denops, rest);
         return;
       }
       if (subcommand === "status") {

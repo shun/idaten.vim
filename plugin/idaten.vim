@@ -60,8 +60,21 @@ function! s:HasConfigOption(words) abort
   return v:false
 endfunction
 
+function! s:HasRevOption(words) abort
+  for l:word in a:words
+    if l:word =~# '^--rev'
+      return v:true
+    endif
+  endfor
+  return v:false
+endfunction
+
+function! s:HasSelfOption(words) abort
+  return index(a:words, '--self') != -1
+endfunction
+
 function! s:IdatenComplete(arglead, cmdline, cursorpos) abort
-  let l:subcommands = ['sync', 'compile', 'status', 'check', 'clean', 'lock']
+  let l:subcommands = ['sync', 'compile', 'update', 'status', 'check', 'clean', 'lock']
   let l:words = split(a:cmdline)
   let l:ends_with_space = a:cmdline =~# '\s$'
 
@@ -95,6 +108,19 @@ function! s:IdatenComplete(arglead, cmdline, cursorpos) abort
     let l:options = ['--config']
     if s:HasConfigOption(l:words)
       call filter(l:options, 'v:val !=# "--config"')
+    endif
+    return empty(a:arglead)
+      \ ? l:options
+      \ : filter(copy(l:options), 'v:val =~# "^" .. a:arglead')
+  endif
+
+  if l:sub ==# 'update'
+    let l:options = ['--rev', '--self']
+    if s:HasRevOption(l:words)
+      call filter(l:options, 'v:val !=# "--rev"')
+    endif
+    if s:HasSelfOption(l:words)
+      call filter(l:options, 'v:val !=# "--self"')
     endif
     return empty(a:arglead)
       \ ? l:options

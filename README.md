@@ -46,12 +46,15 @@ TypeScript 設定ファイルのパスは `g:idaten_config` で指定します�
 
 - `:Idaten sync`
 - `:Idaten compile`
+- `:Idaten update`
 - `:Idaten status`
 - `:Idaten check`
 - `:Idaten clean`
 - `:Idaten lock`（任意）
 
-※ `:Idaten sync` は必ず compile を内包します。
+※ `:Idaten sync` は必ず compile を内包します。  
+※ `:Idaten update` は compile を実行しないため、必要に応じて `:Idaten sync` を実行してください。  
+※ `:Idaten update --self` は idaten 本体を更新します（`g:idaten_repo_path` が有効な場合はスキップ）。
 
 ## TypeScript 設定
 
