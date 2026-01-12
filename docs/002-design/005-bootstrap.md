@@ -15,7 +15,7 @@
 
 - `g:idaten_dir`: 管理ディレクトリを上書きする（未設定時は既定パス）。
 - `g:idaten_config`: TypeScript 設定ファイルのパスを上書きする。
-- `g:idaten_denops_repo`: denops の clone 元（既定: `vim-denops/denops.vim`）。
+- `g:idaten_denops_repo`: denops の clone 元（既定: `https://github.com/vim-denops/denops.vim.git`）。
 - `g:idaten_log_enabled`: ログの有効/無効（既定は無効）。
 - `g:idaten_log_path`: ログの出力先（既定: `/tmp/idaten`）。
 - `g:idaten_denops_clone_tried`: 1 セッション 1 回の clone 試行ガード。
@@ -44,7 +44,7 @@
 - `system()` で `git clone` を実行する（同期）。
 - `executable('git')` が偽の場合は失敗扱いとする。
 - 失敗時は `v:shell_error` を確認し、原因と対処を明示する。
-- `owner/repo` 形式の場合は `https://github.com/<owner>/<repo>.git` に変換して clone する。
+- clone URL は https/ssh/git の URL のみを許可する。
 
 ## Vim script 例（概要）
 

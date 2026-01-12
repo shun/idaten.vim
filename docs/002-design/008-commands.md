@@ -15,7 +15,8 @@
 ## :Idaten compile
 
 - TypeScript 設定を評価し `state.vim` を生成する。
-- 設定ファイルのパスは bootstrap 側で決定されたものを使用する。
+- 設定ファイルのパスは bootstrap で決定されたものを使用する。
+- `--config <path>`（または `--config=<path>`）指定時はそのパスを優先する。
 - 設定パスが空の場合は compile を行わず案内する。
 - 失敗時は `state.vim` を更新せず、原因を表示する。
 - 必要に応じて `import_map.json` を生成/更新する。
@@ -23,6 +24,7 @@
 ## :Idaten sync
 
 - git clone/fetch/checkout を行い、最後に `compile` を必ず実行する。
+- 設定パスは `compile` と同様に解決する（`--config` で上書き可能）。
 - 手順は以下に固定する。
   1. 未インストールを clone
   2. 既存を fetch/checkout

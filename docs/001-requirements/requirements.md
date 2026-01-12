@@ -11,7 +11,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - 通常起動では Deno を起動しない。Deno を使うのは sync/compile と必要な遅延処理時のみ。
 - 実行時のディスク I/O を最小化する(実行時の探索はしない)。
 - 遅延読み込み v1 は event/FileType/command のみ。
-- プラグイン取得元は git リポジトリのみ。dev override でローカル作業ツリーを読める。
+- プラグイン取得元は git URL のみ（https/ssh/git）。ローカルパスは dev override のショートハンドで扱う。
 - class 構文は全面禁止。
 
 ## 2. 命名と配布
@@ -53,7 +53,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - 単一 state.vim へのコンパイル
 - 起動時は state.vim の source のみ
 - 遅延読み込み: event / FileType / command
-- git のみで取得(clone/fetch/checkout)
+- git URL のみで取得(clone/fetch/checkout)
 - sync が compile をデフォルト内包
 - clean / status / check / lock(任意)
 - dev override(ローカル作業ツリー)
@@ -79,8 +79,10 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 ### 5.3 実行時探索の禁止
 - runtime では glob/走査を行わず、compile で列挙する。
 
-### 5.4 取得元は git のみ
-- ローカルパスは dev override としてのみ扱う。
+### 5.4 取得元は git URL のみ
+- `repo` は https/ssh/git の URL のみを許可する。
+- owner/repo や scp-like（git@...）は許可しない。
+- `file://`、`~`、相対パス（`./` または `../`）はローカルパスとして扱い、dev override のショートハンドとする。
 
 ### 5.5 遅延トリガは A/B/C のみ
 - event / FileType / command のみを v1 で扱う。
@@ -117,7 +119,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - 次を満たす場合のみ同期 clone を実施する:
   - runtimepath に denops.vim が無い
   - idaten 管理ディレクトリにも存在しない
-- clone URL は設定で上書き可能(デフォルト: vim-denops/denops.vim)。
+- clone URL は設定で上書き可能(デフォルト: https://github.com/vim-denops/denops.vim.git)。
 - 管理ディレクトリは `g:idaten_dir` で上書き可能。
 - 失敗時の挙動:
   - エディタ起動は継続し、idaten を無効化。
@@ -137,6 +139,8 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - High-level: ensure(repo 省略), lazy(A/B/C) を提供。
   - 型定義を提供(type/interface)。
 - bootstrap で設定パスを `g:idaten_config` で上書きできる。
+- `:Idaten compile`/`:Idaten sync` は `--config <path>`（または `--config=<path>`）でその実行のみ上書きできる。
+- `ctx.denops` を利用して Vim/Neovim 側の値を取得できる。
 - 設定パスが空の場合は compile を行わず案内する。
 
 ### 7.4 モジュール解決
@@ -148,14 +152,22 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 
 ### 7.5 プラグイン定義モデル
 - 必須フィールド:
-  - name(ユニーク)
-  - repo(git URL または owner/repo)
+  - repo(git URL: https/ssh/git)
 - 任意フィールド:
+  - name(省略可・ユニーク)
   - rev, rtp, depends
-  - hooks: hook_add, hook_source, hook_post_update
+  - hookAdd, hookSource（hook 用 TypeScript のパス）
+  - hooks: hook_post_update
   - lazy: on_event, on_ft, on_cmd
   - dev: enable, overridePath
+- repo がローカルパスの場合は dev override として扱い、dev.enable を true にして overridePath を設定する。
+- name 未指定（または name == repo）の場合は `basename(-rev)` から自動生成する（小文字化し、`[^a-z0-9._-]` は `_` に置換）。
+- ローカルではない場合に name を省略すると、repo の文字列が name になる。
 - dev.enable が true の場合は overridePath が必須。
+- hookAdd/hookSource のパスは絶対パスまたは `~` のみ（相対パス不可）。
+- hook 用 TypeScript は `hook_add`/`hook_source` か `hooks(ctx)` を export する。
+- `hooks(ctx)` は `{ hook_add?, hook_source? }` を返す。
+- hookAdd/hookSource 指定時に対応する hook が無い場合は compile を失敗させる。
 
 ### 7.6 遅延読み込み(A/B/C)
 - event: autocmd による遅延ロード。
@@ -166,6 +178,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
 - 管理ディレクトリ配下に clone。
 - パスは再現性があり衝突しないこと。Windows に配慮。
 - packadd に依存せず runtimepath を直接更新。
+- clone 先は `repos/<host>/<path>` とし、host は常に含める（ポートを含む場合は sanitize する）。
 
 ### 7.8 compile(State Builder)
 - 入力: TS 設定、インストール実体、任意で lockfile。
@@ -174,7 +187,7 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - 依存解決順
   - 遅延トリガ表(event/ft/cmd)
   - source 対象ファイルの列挙
-  - hook_add / hook_source 情報
+  - hook_add / hook_source 情報（hook 用 TypeScript から生成）
   - スキーマ/生成元メタデータ
 - スキーマ不一致や破損時は停止し sync を促す。
 - プラグイン実体が存在しない場合は compile を失敗させる。
@@ -212,10 +225,13 @@ idaten.vim は Vim/Neovim の起動を高速化するために、TypeScript(Deno
   - clean は override を削除しない
   - status に override を明示
   - lock から除外
+- repo にローカルパスが指定された場合も dev override として扱う。
+- ローカルパスは `expand()` と `fnamemodify(:p)` で展開・絶対化する。
+- 相対パス（`./` または `../`）は compile 実行時の Vim のカレントディレクトリを基準に解決する。
 
 ### 7.12 Lock(任意)
 - :Idaten lock で lockfile を生成/更新。
-- lockfile は repo または name から commit hash を保持。
+- lockfile は name から commit hash を保持。
 - sync --locked(同等) で lock を強制。
 - 通常 sync は lock を強制しない。
 
@@ -307,16 +323,13 @@ import { type Context, ensure, lazy } from "idaten";
 
 export async function configure(ctx: Context) {
   return [
-    ensure("vim-denops/denops.vim"),
-    lazy("Shougo/ddc.vim", {
+    ensure("https://github.com/vim-denops/denops.vim.git"),
+    lazy("https://github.com/Shougo/ddc.vim.git", {
       on_event: ["InsertEnter"],
-      hooks: { source: "ddc#enable()" },
+      hookSource: "~/.config/nvim/rc/plugins/ddc.ts",
     }),
-    ensure("shun/my-plugin", {
-      dev: {
-        enable: Deno.env.get("DEVELOPMENT") === "1",
-        overridePath: "/abs/path/to/local/worktree",
-      },
+    ensure("~/work/my-plugin", {
+      rev: "main",
     }),
   ];
 }

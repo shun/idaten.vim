@@ -21,8 +21,8 @@
   lock.json
   import_map.json
   repos/
-    <owner>/
-      <repo>/
+    <host>/
+      <path...>/
 ```
 
 - `state.vim` は compile の単一成果物。
@@ -32,20 +32,20 @@
 
 ## リポジトリ配置規則
 
-`repos/` 配下のディレクトリ名は `name`（必須・ユニーク）から決定する。
+`repos/` 配下のディレクトリ名は `repo` の URL から決定する。
 
-- `owner/repo` 形式、または GitHub URL の場合は `repos/<owner>/<repo>` とする。
-- `https://` などの URL で GitHub 以外の host の場合は `repos/<host>/<path...>` とする。
+- `repo` は https/ssh/git の URL を想定する。
+- host は常に含める（ポートを含む場合は host に含め、sanitize で `_` に置換する）。
 - `path` は URL のパスから先頭の `/` と末尾の `.git` を取り除く。
 - 各セグメントは小文字化し、`[a-z0-9._-]` 以外を `_` に置換する。
 - セグメントが空になる場合は `_` とする。
-- host が `github.com`（または `www.github.com`）の場合は `<host>` を省略する。
+- dev override は `repos/` に配置しない。
 
 例:
 
-- `name = "vim-denops/denops.vim"` → `repos/vim-denops/denops.vim`
-- `name = "https://github.com/vim-denops/denops.vim.git"` → `repos/vim-denops/denops.vim`
-- `name = "https://git.example.com/foo/bar.git"` → `repos/git.example.com/foo/bar`
+- `repo = "https://github.com/vim-denops/denops.vim.git"` → `repos/github.com/vim-denops/denops.vim`
+- `repo = "ssh://github.com/vim-denops/denops.vim.git"` → `repos/github.com/vim-denops/denops.vim`
+- `repo = "git://git.example.com:2222/foo/bar.git"` → `repos/git.example.com_2222/foo/bar`
 
 ## 補足
 

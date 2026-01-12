@@ -18,17 +18,26 @@
 
 ## 主要手順
 
-1. 設定ファイルを import し `configure(ctx)` を実行する。
-2. 返却された `Plugin[]` を検証し、`name` の一意性を確認する。
-3. `repo` を正規化（`owner/repo` → `https://github.com/owner/repo.git` 等）。
-4. 依存を解決し、循環依存を検出した場合は失敗とする。
-5. `dev.enable` が `true` の場合は `override_path` を優先する。
+1. 設定ファイルを import し `configure(ctx)` を実行する（`ctx.denops` を利用可能）。
+2. 返却された `Plugin[]` を検証し、`name` を確定した上で一意性を確認する。
+3. `repo` を正規化する。
+   - https/ssh/git の URL のみ許可する。
+   - `file://`、`~`、相対パス（`./` または `../`）はローカルパスとみなし dev override のショートハンドとして扱う。
+   - ローカルパスは `expand()` と `fnamemodify(:p)` で展開・絶対化する。
+   - 相対パス（`./` または `../`）は compile 実行時の Vim のカレントディレクトリを基準に解決する。
+4. `repo` がローカルパスの場合は `dev.enable = true` にし、`override_path` を設定する。
+   - name 未指定（または name == repo）の場合は `basename(-rev)` から自動生成する（小文字化し、`[^a-z0-9._-]` は `_` に置換）。
+   - ローカルではない場合に name を省略すると、repo の文字列が name になる。
+5. 依存を解決し、循環依存を検出した場合は失敗とする。
+6. `dev.enable` が `true` の場合は `override_path` を優先する。
    - `override_path` が空の場合は失敗とする。
-6. `rtp` を正規化（空なら root）。
-7. source 対象ファイルを列挙し `sources` に格納する。
-8. 遅延トリガ表（event/ft/cmd）を生成する。
-9. `hook_add`/`hook_source` を収集する。
-10. `state.vim` を生成する。
+7. `rtp` を正規化（空なら root）。
+8. source 対象ファイルを列挙し `sources` に格納する。
+9. 遅延トリガ表（event/ft/cmd）を生成する。
+10. `hookAdd`/`hookSource` で指定された TypeScript を import し、`hook_add`/`hook_source` を生成する。
+    - `hook_add`/`hook_source` の export、または `hooks(ctx)` の返り値を使用する。
+    - `hooks(ctx)` は `{ hook_add?, hook_source? }` を返す。
+11. `state.vim` を生成する。
 
 ## source 列挙
 

@@ -48,8 +48,8 @@ let s:state = {
 
 ```vim
 let s:state.plugins = {
-      \ 'vim-denops/denops.vim': {
-      \   'path': '/abs/path/to/repos/vim-denops/denops.vim',
+      \ 'https://github.com/vim-denops/denops.vim.git': {
+      \   'path': '/abs/path/to/repos/github.com/vim-denops/denops.vim',
       \   'rtp': '',
       \   'depends': [],
       \   'lazy': {
@@ -81,13 +81,13 @@ let s:state.plugins = {
       \ }
 ```
 
-- `path` は管理ディレクトリ配下の clone 先の絶対パス。
+- `path` は管理ディレクトリ配下の clone 先の絶対パス（`repos/<host>/<path>`）。
 - `rtp` はプラグイン root からの相対パス（空文字は root）。
 - `depends` は依存する `name` の配列。
 - `sources` はプラグインロード時に source する相対パス配列（compile 時に列挙）。
 - `boot_sources` は起動時に必ず source する相対パス配列（`ftdetect`）。
 - `ft_sources` は filetype ごとの列挙済みソース。
-- `hooks.add` と `hooks.source` は Vim script 文字列。
+- `hooks.add` と `hooks.source` は Vim script 文字列（hook 用 TypeScript から生成）。
 - `dev.enable` が `true` の場合、runtime は `override_path` を優先する。
 
 ## 依存解決順

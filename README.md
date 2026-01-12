@@ -9,7 +9,7 @@ Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単�
 - 通常起動では Deno を起動しません（`sync/compile` と必要な遅延処理時のみ使用）。
 - 実行時の探索は行わず、`compile` で列挙したファイルのみを `source` します。
 - 遅延読み込み v1 は event / FileType / command のみ対応します。
-- 取得元は git のみ（ローカルパスは dev override のみ許可）。
+- 取得元は git URL のみ（https/ssh/git）。ローカルパスは dev override のショートハンドとして扱います。
 - class 構文は全面禁止です。
 - Vim script は Vim9 を使わず、従来の Vim script で書きます。
 - Vim script は最小限に留め、重い処理は denops/TypeScript に寄せます。
@@ -32,7 +32,8 @@ Vim/Neovim の起動を高速化するために、TypeScript(Deno) 設定を単�
 
 ## 設定ファイル
 
-TypeScript 設定ファイルのパスは `g:idaten_config` で上書きできます。
+TypeScript 設定ファイルのパスは `g:idaten_config` で指定します。  
+`:Idaten sync`/`:Idaten compile` は `--config <path>`（または `--config=<path>`）でこの実行のみ上書きできます。
 
 ## ログ
 
@@ -62,18 +63,46 @@ import { type Context, ensure, lazy } from "idaten";
 
 export async function configure(ctx: Context) {
   return [
-    ensure("vim-denops/denops.vim"),
-    lazy("Shougo/ddc.vim", {
+    ensure("https://github.com/vim-denops/denops.vim.git"),
+    lazy("https://github.com/Shougo/ddc.vim.git", {
       on_event: ["InsertEnter"],
-      hooks: { source: "ddc#enable()" },
+      hookSource: "~/.config/nvim/rc/plugins/ddc.ts",
     }),
-    ensure("shun/my-plugin", {
-      dev: {
-        enable: Deno.env.get("DEVELOPMENT") === "1",
-        overridePath: "/abs/path/to/local/worktree",
-      },
+    ensure("~/work/my-plugin", {
+      rev: "main",
+      hookAdd: "~/.config/nvim/rc/plugins/my-plugin.ts",
+      hookSource: "~/.config/nvim/rc/plugins/my-plugin.ts",
     }),
   ];
+}
+```
+
+`repo` は https/ssh/git の URL のみ対応します（owner/repo や scp-like は不可）。  
+`repo` に `file://`、`~`、相対パス（`./` または `../`）を指定した場合は dev override として扱います。  
+相対パスは compile 実行時の Vim のカレントディレクトリ基準で展開されます。  
+`name` 未指定の場合は `basename(-rev)` から自動生成されます（衝突する場合は `name` を明示してください）。
+リモートの `repo` で `name` を省略した場合は `repo` の文字列がそのまま `name` になります。
+
+`hookAdd`/`hookSource` で指定した TypeScript は compile 時に import されます。  
+`export const hook_add`/`hook_source`、または `export async function hooks(ctx)` を定義し、
+Vim script 文字列を返します（`ctx.denops` が利用可能）。
+パスは絶対パスまたは `~` のみ対応します。
+
+```ts
+// ~/.config/nvim/rc/plugins/my-plugin.ts
+export const hook_add = "let g:my_plugin_auto = 1";
+export const hook_source = "lua require('rc.my_plugin')";
+```
+
+```ts
+// ~/.config/nvim/rc/plugins/my-plugin.ts
+import type { Context } from "idaten";
+
+export async function hooks(ctx: Context) {
+  const enabled = await ctx.denops.eval("get(g:, 'my_plugin_enabled', 0)");
+  return {
+    hook_add: enabled ? "let g:my_plugin_auto = 1" : "",
+  };
 }
 ```
 
