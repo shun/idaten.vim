@@ -7,6 +7,12 @@
 - idaten.vim は Vim/Neovim 向けのプラグインマネージャで、TypeScript(Deno) 設定を単一の Vim script(state.vim) にコンパイルする。
 - 通常起動は state.vim の source のみで成立し、Deno を起動しない。
 
+## ドキュメント
+- 詳細は `docs/` ディレクトリを参照。
+- エントリポイント: `docs/README.md`
+- 実装制約: `docs/reference/constraints.md`
+- 設定変数: `docs/reference/configuration-variables.md`
+
 ## 絶対要件
 - class 構文は禁止（ユーザ設定/コア/拡張すべて）。関数と plain object のみ。
 - 設定は TypeScript のみ。Vim script DSL は最小 bootstrap 以外提供しない。
@@ -20,7 +26,7 @@
 
 ## 命名と配布
 - Repo: shun/idaten.vim
-- Ex コマンド: :Idaten sync | compile | status | check | clean | lock(任意)
+- Ex コマンド: :Idaten sync | compile | update | status | check | clean | lock
 - TypeScript モジュール名: idaten
 - JSR パッケージ: @shun/idaten-vim
 
