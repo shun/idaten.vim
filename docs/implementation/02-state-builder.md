@@ -39,6 +39,8 @@
 
 - **ローカルパス**: `expand()` と `fnamemodify(:p)` で展開・絶対化
   - 相対パス（`./`, `../`）は compile 実行時の Vim のカレントディレクトリを基準に解決
+  - 実装: `denops.call("expand", path)` → `denops.call("fnamemodify", expanded, ":p")`
+  - Vim側の関数を使用することで、Vim/Neovimのカレントディレクトリを正確に反映
   - `dev.enable = true` に設定
   - `override_path` を設定
 - **git URL**: `https://`, `ssh://`, `git://` のみ許可

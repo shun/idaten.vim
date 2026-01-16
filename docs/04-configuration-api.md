@@ -111,6 +111,8 @@ hook 用 TypeScript は以下のいずれかを export:
 
 指定された hook が存在しない場合は compile エラー。
 
+**注意**: 古い形式の`hooks.hook_add`/`hooks.hook_source`は廃止されました。`hookAdd`/`hookSource`フィールドを使用してください。古い形式を使用するとcompile時にエラーになります。
+
 #### lazy
 
 ```typescript

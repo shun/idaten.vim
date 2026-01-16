@@ -49,6 +49,11 @@ idaten 本体のローカルパス（開発用）。
 - import map が `file://...` に解決される
 - `--self` 更新時はスキップされる
 
+**自動dev有効化の仕組み**:
+- コマンド実行時（compile/sync/update等）に、`g:idaten_repo_path`が有効なディレクトリを指している場合、自動的に`IDATEN_DEV=1`環境変数が設定されます
+- これにより、import mapが`jsr:@shun/idaten-vim`ではなくローカルパスに解決されます
+- 既に`IDATEN_DEV=1`が設定されている場合は、自動設定をスキップします
+
 **使用例**:
 ```vim
 let g:idaten_repo_path = '~/ghq/github.com/shun/idaten.vim'
